@@ -1,0 +1,61 @@
+#include "FOC_Control.h"
+
+Phi_Cal 		Phi = PHI_DEFAULTS;
+Rs_Cal  		Rs_Idt = Rs_DEFAULTS;
+
+bool Is_flag;
+bool Rs_Idt_Over_flag;
+
+void Rs_Identification(P_Rs pv, float Ialpha, float Ibeta)
+{
+	static u8 	time1;
+	static u16	time2;
+	
+	if(Is_flag && (Rs_Idt_Over_flag ==0))
+		time2 ++;
+	else
+		time1 ++;
+	
+	pv->Is_sqr = Ialpha*Ialpha + Ibeta*Ibeta;
+	arm_sqrt_f32(pv->Is_sqr, &pv->Is); 
+	
+	if(time1 == 50)
+	{
+		time1 = 0;
+		if(pv->Is < 5.0f)
+		{
+			IPARK_PVdq.Ds += 0.1f;
+			IPARK_PVdq.Qs = 0;
+		}
+		else
+			Is_flag = 1;
+	}
+	pv->Is_f = pv->Is_f*LPF_Is_B + pv->Is*LPF_Is_A;
+	pv->Rs = IPARK_PVdq.Ds/pv->Is_f;
+	
+//	if(time2 == 400)
+//	{
+//		time2 = 0;
+//		Rs_Idt_Over_flag = 1;
+//	}
+	
+	IPARK_PVdq.Theta = 0;
+	IPARK_Cale((M_IPARK)&IPARK_PVdq);											//IPARK函数计算
+}
+
+//识别永磁体磁链
+void Phi_Identification(P_Phi pv, float Ialpha, float Ibeta, float Ualpha, float Ubeta)
+{
+	pv->Alpha += TS*(Ualpha - Motor.Rs*Ialpha);
+	pv->Beta += TS*(Ubeta - Motor.Rs*Ibeta);
+	
+	IIR_Butterworth(pv->Alpha, &pv->Alpha_hpf, &Phi_Alpha_HPF_Par);
+	IIR_Butterworth(pv->Beta, &pv->Beta_hpf, &Phi_Beta_HPF_Par);
+	
+	pv->fcos2 = (pv->Alpha_hpf - Ialpha*Motor.Ls)*(pv->Alpha_hpf - Ialpha*Motor.Ls);
+	pv->fsin2 = (pv->Beta_hpf - Ibeta*Motor.Ls)*(pv->Beta_hpf - Ibeta*Motor.Ls);
+	
+	pv->f_sq = pv->fcos2 + pv->fsin2;
+	arm_sqrt_f32(pv->f_sq, &pv->f);
+}
+

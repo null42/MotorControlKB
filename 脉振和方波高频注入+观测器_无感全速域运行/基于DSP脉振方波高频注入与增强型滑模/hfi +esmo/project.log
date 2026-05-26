@@ -1,0 +1,7 @@
+
+!CONFIGURATION: 'com.ti.ccstudio.buildDefinitions.C2000.Release.1423850374' [Thu Oct 28 14:35:24 CST 2021]
+
+	!TOOL: 'com.ti.ccstudio.buildDefinitions.C2000_16.9.exe.compilerRelease.1881819683'
+
+		!WARNING: Unresolved option: com.ti.ccstudio.buildDefinitions.C2000_16.9.compilerID.OTHER_FLAGS
+

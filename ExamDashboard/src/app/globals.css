@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  .katex {
+    font-size: 1.05em;
+  }
+  .katex-display {
+    margin: 0.75em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .katex-block {
+    margin: 0.75em 0;
+    overflow-x: auto;
+  }
+
+  .katex-content .katex {
+    font-size: 1.05em;
+  }
+  .katex-content .katex-display {
+    margin: 0.75em 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .katex-content .katex-block {
+    margin: 0.75em 0;
+    overflow-x: auto;
+  }
+  .katex-content .katex-error {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    padding: 0 0.25em;
+    border-radius: 0.25em;
+    font-family: monospace;
+    font-size: 0.9em;
+  }
+
+  .hljs { background: transparent !important; }
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-type { color: #8250df; }
+  .hljs-string,
+  .hljs-addition { color: #0a3069; }
+  .hljs-comment,
+  .hljs-quote { color: #6e7781; font-style: italic; }
+  .hljs-number,
+  .hljs-literal { color: #0550ae; }
+  .hljs-title,
+  .hljs-section,
+  .hljs-selector-id { color: #6639ba; }
+  .hljs-built_in,
+  .hljs-function .hljs-title { color: #8250df; }
+  .hljs-attr,
+  .hljs-attribute,
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-regexp { color: #953800; }
+  .hljs-meta,
+  .hljs-tag { color: #116329; }
+  .hljs-name { color: #0550ae; }
+  .hljs-deletion { color: #cf222e; }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: bold; }
+}
+
+@layer components {
+  /* 代码预览终端面板 */
+  .code-preview-panel {
+    @apply bg-terminal-bg border border-terminal-border rounded-lg p-4
+           font-mono text-sm leading-relaxed overflow-auto;
+  }
+  .code-preview-panel .file-path {
+    @apply text-terminal-text mb-2 text-xs;
+  }
+  .code-preview-panel .code-content {
+    @apply text-gray-300 whitespace-pre-wrap;
+  }
+
+  /* 章节标签 Chip */
+  .chapter-chip {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full
+           text-[10px] font-medium border transition-all duration-200;
+  }
+  .chapter-chip-active {
+    @apply border-current shadow-sm;
+  }
+  .chapter-chip-inactive {
+    @apply border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/50;
+  }
+
+  .prose pre.hljs {
+    padding: 1.25rem 1.5rem;
+  }
+  .prose .hljs {
+    color: #24292f;
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(220 15% 20%);
+    border-radius: 3px;
+  }
+
+  /* 科技蓝渐变动画 */
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 8px hsla(200, 100%, 50%, 0.15); }
+    50% { box-shadow: 0 0 18px hsla(200, 100%, 50%, 0.3); }
+  }
+}

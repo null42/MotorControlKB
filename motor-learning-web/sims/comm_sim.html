@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAN通信协议仿真 — 知识库学习版</title>
+<style>
+:root{
+  --bg:#ffffff;--bg2:#f5f5f4;--bg3:#ebebe8;--tx:#1e1e1c;--tx2:#6b6a64;--tx3:#9a9994;
+  --bd:rgba(128,128,128,.22);
+  --acc:#2563eb;
+  --red:#d73a4a;--green:#16a34a;--orange:#ea580c;--blue:#2563eb;--purple:#7c3aed;--teal:#0d9488;--gold:#ca8a04;--cyan:#06b6d4;
+  --mono:Consolas,Monaco,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+body.dark{
+  --bg:#1a1a18;--bg2:#272724;--bg3:#33332f;--tx:#f3f3f1;--tx2:#a3a29a;--tx3:#6e6d67;
+  --bd:rgba(180,180,180,.16);
+  --red:#f87171;--green:#4ade80;--orange:#fb923c;--blue:#60a5fa;--purple:#a78bfa;--teal:#2dd4bf;--gold:#facc15;--cyan:#22d3ee;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--tx);line-height:1.45;font-size:13px;}
+.layout{display:flex;height:100vh;overflow:hidden;}
+
+.sidebar{width:320px;min-width:280px;flex-shrink:0;overflow-y:auto;padding:10px 12px;
+  border-right:1px solid var(--bd);background:var(--bg);}
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px;}
+h2{font-size:15px;font-weight:700;margin-bottom:6px;}
+h2 small{font-weight:500;color:var(--tx2);font-size:11px;}
+
+.topbar{display:flex;gap:5px;align-items:center;margin:6px 0 8px;flex-wrap:wrap;}
+.topbar button,.topbar select{font-family:var(--sans);font-size:12px;padding:4px 10px;
+  background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:5px;cursor:pointer;}
+.topbar button:hover{background:var(--bg3);}
+.topbar .sp{flex:1;}
+
+#badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;display:inline-block;background:var(--bg2);}
+#badge.run{background:#dcfce7;color:#15803d;}
+body.dark #badge.run{background:#14532d;color:#86efac;}
+#badge.pause{background:#fee2e2;color:#b91c1c;}
+body.dark #badge.pause{background:#7f1d1d;color:#fca5a5;}
+
+details{margin:5px 0;}
+summary{cursor:pointer;font-size:12px;font-weight:600;padding:5px 9px;
+  background:var(--bg2);border-radius:5px;list-style:none;user-select:none;}
+summary::-webkit-details-marker{display:none;}
+summary::before{content:"▶ ";font-size:9px;}
+details[open] summary::before{content:"▼ ";}
+.dc{padding:6px 4px 2px;font-size:11px;color:var(--tx2);}
+
+.ci{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--tx2);margin:3px 0;}
+.ci .lb{min-width:64px;font-family:var(--mono);color:var(--tx);font-size:11px;}
+.ci .un{min-width:28px;color:var(--tx3);font-size:10px;}
+.ci input[type=range]{flex:1;min-width:40px;}
+.ci input[type=number]{width:64px;padding:2px 3px;background:var(--bg);color:var(--tx);
+  border:1px solid var(--bd);border-radius:4px;font-family:var(--mono);font-size:11px;text-align:right;}
+.ci select{padding:2px 4px;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:4px;font-size:11px;}
+
+input[type=range]{-webkit-appearance:none;height:4px;background:var(--bd);border-radius:2px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+  background:var(--acc);border-radius:50%;cursor:pointer;}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;background:var(--acc);border-radius:50%;cursor:pointer;border:none;}
+
+.btn{font-family:var(--sans);font-size:11px;padding:4px 10px;
+  background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:5px;cursor:pointer;margin:2px 0;
+  transition:background .15s,border-color .15s;}
+.btn:hover{background:var(--bg3);border-color:var(--acc);}
+.btn:active{transform:scale(.97);}
+.btn.red{color:var(--red);border-color:var(--red);}
+.btn-row{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0;}
+
+.mts{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0;font-size:11px;}
+.mi{padding:4px 6px;background:var(--bg2);border-radius:4px;font-family:var(--mono);}
+.mi .ml{color:var(--tx2);font-size:10px;display:block;}
+.mi .mv{color:var(--tx);font-weight:600;}
+
+.node-row{display:flex;align-items:center;gap:4px;margin:6px 0;padding:5px 6px;background:var(--bg2);border-radius:5px;font-size:11px;}
+.node-row .n-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.node-row .n-lb{font-family:var(--mono);min-width:40px;color:var(--tx);}
+.node-row input{width:64px;padding:2px 3px;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:3px;font-family:var(--mono);font-size:10px;}
+.node-row select{padding:1px 3px;background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:3px;font-size:10px;}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;padding:10px 14px;}
+.tabs{display:flex;gap:4px;margin-bottom:8px;border-bottom:1px solid var(--bd);}
+.tab{font-family:var(--sans);font-size:12px;padding:6px 12px;background:transparent;color:var(--tx2);
+  border:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;}
+.tab.active{color:var(--tx);border-bottom-color:var(--acc);font-weight:600;}
+.panel{display:none;flex:1;overflow-y:auto;}
+.panel.active{display:flex;flex-direction:column;}
+
+.frame-view{position:relative;overflow-x:auto;padding:4px 0;}
+.frame-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:1px;font-family:var(--mono);font-size:10px;}
+.fg-cell{text-align:center;padding:2px 1px;border-radius:2px;min-width:30px;}
+.fg-cell.sof{background:var(--purple);color:#fff;}
+.fg-cell.id{background:var(--blue);color:#fff;}
+.fg-cell.ctrl{background:var(--gold);color:#fff;}
+.fg-cell.dlc{background:var(--teal);color:#fff;}
+.fg-cell.data{background:var(--green);color:#fff;}
+.fg-cell.crc{background:var(--orange);color:#fff;}
+.fg-cell.ack{background:var(--red);color:#fff;}
+.fg-cell.eof{background:var(--tx2);color:#fff;}
+.fg-hdr{grid-column:1/-1;display:flex;gap:4px;font-size:10px;color:var(--tx2);padding:2px 0;margin-bottom:4px;flex-wrap:wrap;}
+.fg-hdr span{padding:1px 6px;border-radius:3px;color:#fff;}
+
+canvas{display:block;border-radius:7px;background:var(--bg);border:1px solid var(--bd);}
+.arb-wrap{flex:1;min-height:200px;display:flex;flex-direction:column;gap:8px;}
+.arb-wrap canvas{width:100%;flex:1;}
+.arb-leg{display:flex;flex-wrap:wrap;gap:10px;font-size:10.5px;color:var(--tx2);margin-bottom:4px;}
+.arb-leg span{display:inline-flex;align-items:center;gap:4px;}
+.arb-leg i{display:inline-block;width:12px;height:2px;}
+
+.info-bar{display:flex;gap:12px;font-size:11px;color:var(--tx2);margin:4px 0;flex-wrap:wrap;}
+.info-bar .kv{font-family:var(--mono);}
+.info-bar b{color:var(--tx);}
+
+.tec-bar{display:flex;gap:6px;align-items:center;margin:4px 0;font-size:11px;}
+.tec-track{flex:1;height:20px;background:var(--bg2);border-radius:3px;position:relative;overflow:hidden;}
+.tec-fill{height:100%;border-radius:3px;transition:width .3s,background .3s;}
+.tec-label{font-family:var(--mono);font-size:10px;min-width:40px;text-align:right;color:var(--tx2);}
+
+.gauge-wrap{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:8px 0;}
+.gauge{width:110px;height:110px;}
+.gauge-stats{font-family:var(--mono);font-size:12px;color:var(--tx2);}
+.gauge-stats .gv{color:var(--tx);font-size:20px;font-weight:700;}
+.gauge-stats .gu{font-size:10px;color:var(--tx3);}
+
+.fbox{font-size:11px;font-family:var(--mono);color:var(--tx2);
+  margin:6px 0;padding:6px 8px;background:var(--bg2);border-radius:5px;line-height:1.6;}
+.fbox b{color:var(--tx);}
+
+.log-box{font-family:var(--mono);font-size:11px;color:var(--tx2);background:var(--bg2);border-radius:5px;padding:8px 10px;max-height:180px;overflow-y:auto;line-height:1.6;}
+.log-box .l-t{color:var(--tx3);margin-right:4px;}
+.log-box .l-e{color:var(--red);}
+.log-box .l-w{color:var(--orange);}
+.log-box .l-g{color:var(--green);}
+</style>
+</head>
+<body>
+<div class="layout">
+<div class="sidebar" id="sidebar">
+  <h2>CAN通信协议仿真 <small>知识库学习版</small></h2>
+  <div class="topbar">
+    <button onclick="toggleRun()" id="btnRun">▶ 启动</button>
+    <button onclick="resetSim()">↺ 重置</button>
+    <span id="badge" class="pause">暂停</span>
+    <div class="sp"></div>
+    <button onclick="toggleTheme()">🌓 主题</button>
+  </div>
+
+  <details open>
+    <summary>总线配置</summary>
+    <div class="dc">
+      <div class="ci"><span class="lb">波特率</span>
+        <select id="baudrate" onchange="onBaudChange()">
+          <option value="125">125 kbit/s</option>
+          <option value="250">250 kbit/s</option>
+          <option value="500" selected>500 kbit/s</option>
+          <option value="1000">1 Mbit/s</option>
+          <option value="2000">2 Mbit/s</option>
+          <option value="5000">5 Mbit/s</option>
+        </select>
+      </div>
+      <div class="ci"><span class="lb">仿真速率</span>
+        <input type="range" id="simSpeed" min="1" max="20" value="5" oninput="S.simSpeed=+this.value"> <span class="un">x<span id="spdVal">5</span></span>
+      </div>
+      <div class="ci"><span class="lb">终端电阻</span>
+        <select id="termination" onchange="S.termination=this.value"><option value="60" selected>60Ω (双端)</option><option value="120">120Ω (单端)</option><option value="none">断开</option></select>
+      </div>
+    </div>
+  </details>
+
+  <details open>
+    <summary>节点配置</summary>
+    <div class="dc">
+      <div class="node-row" id="node0">
+        <span class="n-dot" style="background:var(--blue)"></span>
+        <span class="n-lb">节点A</span>
+        <span>ID:</span><input type="number" value="0x123" onchange="updateNode(0)" id="n0id">
+        <span>DLC:</span><input type="number" value="4" min="0" max="8" onchange="updateNode(0)" id="n0dlc">
+        <span>周期:</span><input type="number" value="10" min="1" max="100" onchange="updateNode(0)" id="n0per">ms
+        <select onchange="updateNode(0)" id="n0type"><option value="std" selected>标准帧</option><option value="ext">扩展帧</option></select>
+      </div>
+      <div class="node-row" id="node1">
+        <span class="n-dot" style="background:var(--red)"></span>
+        <span class="n-lb">节点B</span>
+        <span>ID:</span><input type="number" value="0x07F" onchange="updateNode(1)" id="n1id">
+        <span>DLC:</span><input type="number" value="2" min="0" max="8" onchange="updateNode(1)" id="n1dlc">
+        <span>周期:</span><input type="number" value="15" min="1" max="100" onchange="updateNode(1)" id="n1per">ms
+        <select onchange="updateNode(1)" id="n1type"><option value="std" selected>标准帧</option><option value="ext">扩展帧</option></select>
+      </div>
+      <div class="node-row" id="node2">
+        <span class="n-dot" style="background:var(--green)"></span>
+        <span class="n-lb">节点C</span>
+        <span>ID:</span><input type="number" value="0x200" onchange="updateNode(2)" id="n2id">
+        <span>DLC:</span><input type="number" value="8" min="0" max="8" onchange="updateNode(2)" id="n2dlc">
+        <span>周期:</span><input type="number" value="20" min="1" max="100" onchange="updateNode(2)" id="n2per">ms
+        <select onchange="updateNode(2)" id="n2type"><option value="std" selected>标准帧</option><option value="ext">扩展帧</option></select>
+      </div>
+      <button class="btn red" onclick="injectError()" style="margin-top:6px;">⚡ 注入错误</button>
+    </div>
+  </details>
+
+  <div class="mts">
+    <div class="mi"><span class="ml">总线负载率</span><span class="mv" id="busLoad">0%</span></div>
+    <div class="mi"><span class="ml">帧速率</span><span class="mv" id="frameRate">0 fps</span></div>
+    <div class="mi"><span class="ml">赢得仲裁</span><span class="mv" id="arbWin">-</span></div>
+    <div class="mi"><span class="ml">当前总线</span><span class="mv" id="busState">空闲</span></div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab(0)">📦 帧可视化</button>
+    <button class="tab" onclick="switchTab(1)">⚔️ 仲裁演示</button>
+    <button class="tab" onclick="switchTab(2)">⚠️ 错误模拟</button>
+    <button class="tab" onclick="switchTab(3)">📊 总线统计</button>
+  </div>
+
+  <div class="panel active" id="panel0">
+    <div class="info-bar">
+      <span>最后帧: <b class="kv" id="lastFrameInfo">等待中...</b></span>
+      <span>帧长度: <b class="kv" id="frameLen">- bit</b></span>
+      <span>传输时间: <b class="kv" id="frameTime">- μs</b></span>
+    </div>
+    <div class="frame-view" id="frameView">
+      <div class="fg-hdr">
+        <span class="fg-cell sof">SOF</span>
+        <span class="fg-cell id">ID[10:0]</span>
+        <span class="fg-cell ctrl">RTR+IDE+r0</span>
+        <span class="fg-cell dlc">DLC</span>
+        <span class="fg-cell data">DATA[0..n]</span>
+        <span class="fg-cell crc">CRC15+CD</span>
+        <span class="fg-cell ack">ACK+AD</span>
+        <span class="fg-cell eof">EOF+IFS</span>
+      </div>
+      <div class="frame-grid" id="frameGrid"></div>
+    </div>
+    <div class="info-bar" style="margin-top:8px;">
+      <span>📏 位填充前: <b class="kv" id="bitsBefore">-</b></span>
+      <span>📐 位填充后(最大): <b class="kv" id="bitsAfter">-</b></span>
+      <span>📋 CRC校验: <b class="kv" id="crcCheck">-</b></span>
+    </div>
+  </div>
+
+  <div class="panel" id="panel1">
+    <div class="arb-leg">
+      <span><i style="background:var(--blue)"></i> 节点A</span>
+      <span><i style="background:var(--red)"></i> 节点B</span>
+      <span><i style="background:var(--green)"></i> 节点C</span>
+      <span><i style="background:var(--tx)"></i> 总线实际</span>
+      <span style="font-size:10px;margin-left:auto;">⚡显性(0)=低历史  ⚪隐性(1)=高历史</span>
+    </div>
+    <div class="arb-wrap">
+      <canvas id="arbCanvas"></canvas>
+    </div>
+    <div class="log-box" id="arbLog">
+      <span class="l-t">等待仿真启动...</span>
+    </div>
+  </div>
+
+  <div class="panel" id="panel2">
+    <div style="margin-bottom:8px;">
+      <h3 style="font-size:13px;">TEC (发送错误计数器)</h3>
+      <div class="tec-bar">
+        <span style="min-width:30px;text-align:left;">0</span>
+        <div class="tec-track"><div class="tec-fill" id="tecFill" style="width:0%;background:var(--green);"></div></div>
+        <span style="min-width:30px;">255</span>
+        <span class="tec-label" id="tecVal">0</span>
+      </div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <h3 style="font-size:13px;">REC (接收错误计数器)</h3>
+      <div class="tec-bar">
+        <span style="min-width:30px;">0</span>
+        <div class="tec-track"><div class="tec-fill" id="recFill" style="width:0%;background:var(--green);"></div></div>
+        <span style="min-width:30px;">128</span>
+        <span class="tec-label" id="recVal">0</span>
+      </div>
+    </div>
+    <div class="mts" style="margin:8px 0;">
+      <div class="mi"><span class="ml">节点A状态</span><span class="mv" id="stateA">Error Active</span></div>
+      <div class="mi"><span class="ml">节点B状态</span><span class="mv" id="stateB">Error Active</span></div>
+      <div class="mi"><span class="ml">节点C状态</span><span class="mv" id="stateC">Error Active</span></div>
+    </div>
+    <div class="btn-row" style="margin:8px 0;">
+      <button class="btn red" onclick="injectError()">⚡ 注入单次错误 (TEC+8)</button>
+      <button class="btn red" onclick="injectBurstErrors()">💥 连续错误 (TEC→255)</button>
+      <button class="btn" onclick="simulateBusOffRecovery()">🔄 模拟Bus Off恢复</button>
+    </div>
+    <div class="log-box" id="errLog" style="max-height:200px;">
+      <span class="l-t">点击上方按钮注入CAN错误，观察TEC/REC变化...</span>
+    </div>
+  </div>
+
+  <div class="panel" id="panel4">
+    <div class="gauge-wrap">
+      <canvas class="gauge" id="loadGauge" width="110" height="110"></canvas>
+      <div class="gauge-stats">
+        <div><span class="gu">总线负载率</span><br><span class="gv" id="gLoad">0</span><span class="gu"> %</span></div>
+        <div style="margin-top:6px;"><span class="gu">平均帧间隔</span><br><span class="gv" id="gInterval">-</span><span class="gu"> μs</span></div>
+        <div style="margin-top:6px;"><span class="gu">峰值帧速率</span><br><span class="gv" id="gPeak">-</span><span class="gu"> fps</span></div>
+      </div>
+    </div>
+    <div class="fbox">
+      <b>位时间</b> = 1/波特率 = <span id="gBitTime">2.0</span> μs<br>
+      <b>标准帧最短长度</b> (DLC=0): 44位 → <span id="gMinFrame">88</span> μs<br>
+      <b>标准帧最长长度</b> (DLC=8): 108位 → <span id="gMaxFrame">216</span> μs<br>
+      <b>理论最大帧速率</b> (500kbps, DLC=8): <span id="gMaxFps">-</span> fps
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const N_COLORS = ['#2563eb','#d73a4a','#16a34a','#ea580c'];
+const N_COLORS_D = ['#60a5fa','#f87171','#4ade80','#fb923c'];
+
+let S = {
+  running: false,
+  simSpeed: 5,
+  baudrate: 500000,
+  termination: '60',
+  dark: false,
+  nodes: [
+    { id: 0x123, dlc: 4, period: 10, type: 'std', timer: 0, data: [], tec: 0, rec: 0, state: 'active' },
+    { id: 0x07F, dlc: 2, period: 15, type: 'std', timer: 0, data: [], tec: 0, rec: 0, state: 'active' },
+    { id: 0x200, dlc: 8, period: 20, type: 'std', timer: 0, data: [], tec: 0, rec: 0, state: 'active' }
+  ],
+  lastWinner: -1,
+  lastFrame: null,
+  arbHistory: [],
+  busLog: [],
+  totalFrames: 0,
+  errorInjected: false,
+  errorNode: -1,
+  frameStartTime: 0,
+  busLoad: 0,
+  frameRateAvg: 0,
+  frameTimes: []
+};
+
+function bitLen(node) {
+  let n = 1 + (node.type === 'ext' ? 32 : 12) + 3 + 4 + node.dlc * 8 + 16 + 2 + 7 + 3;
+  return n;
+}
+function calcBitTime() { return 1e6 / S.baudrate; }
+function calcFrameTime(node) { return bitLen(node) * calcBitTime(); }
+
+function randData(len) { let d=[]; for(let i=0;i<len;i++) d.push(Math.floor(Math.random()*256)); return d; }
+function crc15(data) { let crc=0; for(let b of data){ crc^=(b<<7); for(let i=0;i<8;i++){ crc=(crc&0x4000)?((crc<<1)^0x4599)&0x7fff:(crc<<1)&0x7fff; } } return crc; }
+
+function toggleRun() {
+  S.running = !S.running;
+  document.getElementById('btnRun').textContent = S.running ? '⏸ 暂停' : '▶ 启动';
+  document.getElementById('badge').textContent = S.running ? '运行中' : '暂停';
+  document.getElementById('badge').className = S.running ? 'run' : 'pause';
+  if(S.running) { S.nodes.forEach(n => n.timer = 0); S.busLog = []; S.arbHistory = []; S.lastWinner = -1; S.frameStartTime = performance.now(); S.frameTimes = []; }
+}
+function resetSim() {
+  S.running = false;
+  document.getElementById('btnRun').textContent = '▶ 启动';
+  document.getElementById('badge').textContent = '暂停';
+  document.getElementById('badge').className = 'pause';
+  S.nodes.forEach((n,i) => { n.timer = 0; n.tec = 0; n.rec = 0; n.state = 'active'; });
+  S.lastWinner = -1; S.lastFrame = null; S.arbHistory = []; S.busLog = []; S.totalFrames = 0; S.frameTimes = [];
+  S.busLoad = 0; S.frameRateAvg = 0;
+  updateNodesUI();
+  drawAll();
+  clearLogs();
+}
+function toggleTheme() { S.dark = !S.dark; document.body.classList.toggle('dark', S.dark); }
+
+function onBaudChange() { S.baudrate = parseInt(document.getElementById('baudrate').value) * 1000; updateStats(); drawGauge(); }
+function updateNode(i) {
+  S.nodes[i].id = parseInt(document.getElementById('n'+i+'id').value) || 0;
+  S.nodes[i].dlc = Math.max(0, Math.min(8, parseInt(document.getElementById('n'+i+'dlc').value) || 0));
+  S.nodes[i].period = Math.max(1, parseInt(document.getElementById('n'+i+'per').value) || 10);
+  S.nodes[i].type = document.getElementById('n'+i+'type').value;
+  updateNodesUI();
+}
+function updateNodesUI() {
+  for(let i=0;i<3;i++) {
+    let n = S.nodes[i];
+    document.getElementById('n'+i+'id').value = '0x' + n.id.toString(16).toUpperCase().padStart(3,'0');
+    document.getElementById('n'+i+'dlc').value = n.dlc;
+    document.getElementById('n'+i+'per').value = n.period;
+    document.getElementById('n'+i+'type').value = n.type;
+  }
+}
+
+function injectError() {
+  if(S.nodes.length === 0) return;
+  S.errorInjected = true;
+  S.errorNode = Math.floor(Math.random() * S.nodes.length);
+  let n = S.nodes[S.errorNode];
+  n.tec = Math.min(255, n.tec + 8);
+  if(n.tec > 127) n.state = 'passive';
+  if(n.tec > 255) n.state = 'busoff';
+  S.busLog.push({ t: performance.now(), msg: 'error', node: S.errorNode, tec: n.tec });
+  updateErrorUI();
+}
+
+function injectBurstErrors() {
+  S.nodes.forEach((n,i) => {
+    n.tec = 255;
+    n.state = 'passive';
+    S.busLog.push({ t: performance.now(), msg: 'burst', node: i, tec: 255 });
+  });
+  updateErrorUI();
+}
+
+function simulateBusOffRecovery() {
+  S.nodes.forEach((n,i) => {
+    if(n.state === 'busoff') {
+      n.tec = 0; n.rec = 0; n.state = 'active';
+      S.busLog.push({ t: performance.now(), msg: 'recovery', node: i });
+    }
+  });
+  updateErrorUI();
+}
+
+function updateErrorUI() {
+  for(let i=0;i<3;i++) {
+    let n = S.nodes[i];
+    document.getElementById('tecVal').textContent = 'A:'+S.nodes[0].tec+' B:'+S.nodes[1].tec+' C:'+S.nodes[2].tec;
+    document.getElementById('recVal').textContent = 'A:'+S.nodes[0].rec+' B:'+S.nodes[1].rec+' C:'+S.nodes[2].rec;
+    let maxTec = Math.max(S.nodes[0].tec, S.nodes[1].tec, S.nodes[2].tec);
+    document.getElementById('tecFill').style.width = (maxTec/255*100)+'%';
+    document.getElementById('tecFill').style.background = maxTec > 127 ? 'var(--red)' : maxTec > 96 ? 'var(--orange)' : 'var(--green)';
+    let maxRec = Math.max(S.nodes[0].rec, S.nodes[1].rec, S.nodes[2].rec);
+    document.getElementById('recFill').style.width = (maxRec/128*100)+'%';
+    document.getElementById('recFill').style.background = maxRec > 96 ? 'var(--orange)' : 'var(--green)';
+  }
+  let stateNames = { active: 'Error Active ✓', passive: 'Error Passive ⚠', busoff: 'Bus Off ✗' };
+  for(let i=0;i<3;i++) {
+    document.getElementById('state'+String.fromCharCode(65+i)).textContent = stateNames[S.nodes[i].state] || 'Unknown';
+  }
+  let errLog = document.getElementById('errLog');
+  let recent = S.busLog.slice(-8).reverse();
+  errLog.innerHTML = recent.length ? recent.map(l =>
+    `<span class="l-t">[${new Date(l.t).toISOString().slice(11,19)}]</span>` +
+    (l.msg === 'error' ? `<span class="l-e">节点${String.fromCharCode(65+l.node)} 检测到错误 TEC=${l.tec}</span>` :
+     l.msg === 'burst' ? `<span class="l-e">💥 节点${String.fromCharCode(65+l.node)} 连续错误 TEC=255</span>` :
+     `<span class="l-g">🔄 节点${String.fromCharCode(65+l.node)} Bus Off恢复</span>`)
+  ).join('<br>') : '<span class="l-t">点击上方按钮注入CAN错误，观察TEC/REC变化...</span>';
+}
+
+function clearLogs() {
+  document.getElementById('arbLog').innerHTML = '<span class="l-t">等待仿真启动...</span>';
+  document.getElementById('errLog').innerHTML = '<span class="l-t">点击上方按钮注入CAN错误，观察TEC/REC变化...</span>';
+}
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+  if(idx === 1) drawArbCanvas();
+  if(idx === 3) drawGauge();
+}
+
+function updateStats() {
+  let bt = calcBitTime();
+  document.getElementById('gBitTime').textContent = bt.toFixed(1);
+  let minF = 44, maxF = 108;
+  document.getElementById('gMinFrame').textContent = Math.round(minF * bt);
+  document.getElementById('gMaxFrame').textContent = Math.round(maxF * bt);
+  document.getElementById('gMaxFps').textContent = Math.round(1e6 / (maxF * bt));
+  document.getElementById('busLoad').textContent = Math.round(S.busLoad) + '%';
+  document.getElementById('frameRate').textContent = Math.round(S.frameRateAvg) + ' fps';
+  document.getElementById('arbWin').textContent = S.lastWinner >= 0 ? '节点' + String.fromCharCode(65+S.lastWinner) : '-';
+  document.getElementById('busState').textContent = S.running ? (S.lastWinner >= 0 ? '传输中' : '空闲') : '暂停';
+}
+
+function drawFrameGrid(node) {
+  let grid = document.getElementById('frameGrid');
+  let h = '<span class="fg-cell sof" style="grid-column:span 1;">0</span>';
+
+  if(node.type === 'ext') {
+    let bid = node.id.toString(2).padStart(29,'0');
+    h += '<span class="fg-cell id" style="grid-column:span 11;">' + bid.slice(0,11).split('').join(' ') + '</span>';
+    h += '<span class="fg-cell ctrl" style="grid-column:span 2;">SRR IDE</span>';
+    h += '<span class="fg-cell id" style="grid-column:span 18;">' + bid.slice(11).split('').join(' ') + '</span>';
+  } else {
+    let bid = node.id.toString(2).padStart(11,'0');
+    h += '<span class="fg-cell id" style="grid-column:span 11;">' + bid.split('').join(' ') + '</span>';
+  }
+  h += '<span class="fg-cell ctrl" style="grid-column:span 3;">RTR IDE r0</span>';
+  let dlcBits = node.dlc.toString(2).padStart(4,'0');
+  h += '<span class="fg-cell dlc" style="grid-column:span 4;">' + dlcBits.split('').join(' ') + '</span>';
+  if(node.dlc > 0) {
+    let dataBits = node.data.map(b => b.toString(2).padStart(8,'0')).join(' ');
+    h += '<span class="fg-cell data" style="grid-column:span ' + (node.dlc*8) + ';">' + dataBits + '</span>';
+  } else {
+    h += '<span class="fg-cell data" style="grid-column:span 1;">∅</span>';
+  }
+  h += '<span class="fg-cell crc" style="grid-column:span 16;">CRC15 + CD</span>';
+  h += '<span class="fg-cell ack" style="grid-column:span 2;">ACK AD</span>';
+  h += '<span class="fg-cell eof" style="grid-column:span 10;">7×1 + 3×1</span>';
+
+  grid.innerHTML = h;
+  document.getElementById('lastFrameInfo').textContent = 'ID=0x' + node.id.toString(16).toUpperCase().padStart(node.type==='ext'?8:3,'0') +
+    ' ' + node.type.toUpperCase() + ' DLC=' + node.dlc;
+  document.getElementById('frameLen').textContent = bitLen(node) + ' bit';
+  document.getElementById('frameTime').textContent = Math.round(calcFrameTime(node)) + ' μs';
+  document.getElementById('bitsBefore').textContent = bitLen(node) + ' bit';
+  document.getElementById('bitsAfter').textContent = '≤' + Math.round(bitLen(node) * 1.1) + ' bit (含填充)';
+  document.getElementById('crcCheck').textContent = 'CRC=' + crc15(node.data).toString(16).toUpperCase().padStart(4,'0');
+}
+
+function drawArbCanvas() {
+  let c = document.getElementById('arbCanvas');
+  let rect = c.parentElement.getBoundingClientRect();
+  c.width = rect.width * (window.devicePixelRatio || 1);
+  c.height = 220 * (window.devicePixelRatio || 1);
+  c.style.width = '100%';
+  c.style.height = '220px';
+  let ctx = c.getContext('2d');
+  let W = c.width, H = c.height;
+  ctx.clearRect(0,0,W,H);
+
+  let margin = { l: 80, r: 20, t: 30, b: 20 };
+  let pw = W - margin.l - margin.r;
+  let ph = H - margin.t - margin.b;
+
+  ctx.fillStyle = S.dark ? '#f3f3f1' : '#1e1e1c';
+  ctx.font = '11px monospace';
+  ctx.fillText('SOF→', margin.l - 45, margin.t + 24);
+  ctx.fillText('ID→', margin.l - 45, margin.t + 62);
+  ctx.fillText('总线→', margin.l - 45, margin.t + 116);
+
+  let rowH = 34;
+  let colors = S.dark ? N_COLORS_D : N_COLORS;
+  for(let i=0;i<3;i++) {
+    let y = margin.t + i * rowH;
+    ctx.fillStyle = colors[i];
+    ctx.fillText('节点' + String.fromCharCode(65+i) + ' ID=0x' + S.nodes[i].id.toString(16), 5, y + 18);
+  }
+  ctx.fillStyle = S.dark ? '#f3f3f1' : '#1e1e1c';
+  ctx.fillText('总线 (线与)', 5, margin.t + 3 * rowH + 18);
+
+  if(S.arbHistory.length > 0) {
+    let h = S.arbHistory;
+    let maxTime = h[h.length-1].time;
+    let minTime = h[0].time;
+    let range = Math.max(maxTime - minTime, 1);
+    ctx.strokeStyle = 'var(--bd)';
+    ctx.lineWidth = 0.5;
+    for(let i=0;i<32;i++) {
+      let x = margin.l + (i/32) * pw;
+      ctx.beginPath(); ctx.moveTo(x, margin.t); ctx.lineTo(x, margin.t+ph); ctx.stroke();
+    }
+    let colors = S.dark ? N_COLORS_D : N_COLORS;
+    for(let ev of h) {
+      let x = margin.l + ((ev.time - minTime) / range) * pw;
+      for(let ni=0;ni<3;ni++) {
+        let y = margin.t + ni * rowH + 6;
+        let bit = (ev.events[ni] !== undefined) ? ev.events[ni] : null;
+        if(bit !== null) {
+          ctx.fillStyle = bit === 0 ? (S.dark ? '#60a5fa' : '#2563eb') : (S.dark ? '#333' : '#ddd');
+          ctx.fillRect(x-1, y, 3, rowH-12);
+        }
+      }
+      let y = margin.t + 3 * rowH + 6;
+      if(ev.busBit !== undefined) {
+        ctx.fillStyle = ev.busBit === 0 ? (S.dark ? '#22d3ee' : '#06b6d4') : (S.dark ? '#444' : '#ccc');
+        ctx.fillRect(x-1.5, y, 4, rowH-12);
+      }
+    }
+  }
+
+  if(S.running && S.lastFrame) {
+    ctx.fillStyle = S.dark ? '#a3a29a' : '#6b6a64';
+    ctx.font = '11px monospace';
+    ctx.fillText('最后胜出: 节点' + String.fromCharCode(65+S.lastWinner) + ' (ID=0x' + S.nodes[S.lastWinner].id.toString(16) + ')',
+      margin.l, H - 8);
+    let bt = calcBitTime();
+    ctx.fillText('位时间: ' + bt.toFixed(1) + ' μs  |  帧时间: ' + Math.round(calcFrameTime(S.nodes[S.lastWinner])) + ' μs',
+      margin.l + 220, H - 8);
+  }
+}
+
+function drawGauge() {
+  let c = document.getElementById('loadGauge');
+  let ctx = c.getContext('2d');
+  let cx = 55, cy = 55, r = 45;
+  ctx.clearRect(0,0,110,110);
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI*0.75, Math.PI*2.25);
+  ctx.strokeStyle = S.dark ? 'var(--bd)' : 'rgba(128,128,128,.3)';
+  ctx.lineWidth = 8; ctx.stroke();
+
+  let load = S.busLoad / 100;
+  let color = load > 0.7 ? 'var(--red)' : load > 0.4 ? 'var(--orange)' : 'var(--green)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI*0.75, Math.PI*0.75 + load*Math.PI*1.5);
+  ctx.strokeStyle = color; ctx.lineWidth = 8;
+  ctx.lineCap = 'round'; ctx.stroke();
+
+  ctx.fillStyle = S.dark ? '#f3f3f1' : '#1e1e1c';
+  ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(Math.round(S.busLoad), cx, cy + 6);
+  ctx.font = '9px monospace';
+  ctx.fillText('%', cx + 16, cy + 2);
+}
+
+function drawAll() {
+  if(S.lastFrame) drawFrameGrid(S.lastFrame);
+  drawArbCanvas();
+  drawGauge();
+  updateStats();
+}
+
+function simStep(dt) {
+  let realDt_ms = dt * S.simSpeed;
+  let arbTimes = [];
+
+  for(let i=0;i<S.nodes.length;i++) {
+    let n = S.nodes[i];
+    if(n.state === 'busoff') continue;
+    n.timer += realDt_ms;
+    while(n.timer >= n.period) {
+      n.timer -= n.period;
+      n.data = randData(n.dlc);
+      let frameUs = calcFrameTime(n);
+      arbTimes.push({ node: i, id: n.id, type: n.type, frameTime: frameUs, arrival: n.timer + frameUs/1000 });
+    }
+  }
+
+  if(arbTimes.length > 0) {
+    arbitrate(arbTimes);
+    S.totalFrames++;
+
+    let now = performance.now();
+    S.frameTimes.push(now);
+    while(S.frameTimes.length > 50) S.frameTimes.shift();
+    if(S.frameTimes.length >= 2) {
+      let intervals = [];
+      for(let i=1;i<S.frameTimes.length;i++) intervals.push(S.frameTimes[i]-S.frameTimes[i-1]);
+      S.frameRateAvg = S.frameTimes.length > 1 ? 1000 / (intervals.reduce((a,b)=>a+b,0)/intervals.length) : 0;
+    }
+    let avgFrameTime = 0;
+    for(let n of S.nodes) avgFrameTime += calcFrameTime(n);
+    avgFrameTime /= S.nodes.length;
+    let totalPeriod = 0;
+    for(let n of S.nodes) totalPeriod += 1000 / n.period;
+    S.busLoad = Math.min(100, totalPeriod * avgFrameTime / 10000);
+
+    S.lastWinner = arbTimes[0].node;
+    S.lastFrame = S.nodes[S.lastWinner];
+    S.lastFrame.data = randData(S.lastFrame.dlc);
+  }
+}
+
+function arbitrate(pending) {
+  pending.sort((a,b) => a.id - b.id);
+  let winner = pending[0];
+
+  let arbBits = [];
+  let maxBits = winner.type === 'ext' ? 29 : 11;
+  let winnerBits = winner.id.toString(2).padStart(maxBits,'0');
+  let others = [];
+
+  for(let f of pending) {
+    if(f === winner) continue;
+    let bid = f.id.toString(2).padStart(f.type === 'ext' ? 29 : 11, '0');
+    others.push({ node: f.node, bits: bid });
+  }
+
+  let t = performance.now();
+  S.arbHistory.push({ time: t, events: { [winner.node]: 0 }, busBit: 0 });
+
+  for(let bit=0;bit<maxBits;bit++) {
+    let wb = parseInt(winnerBits[bit]);
+    S.arbHistory.push({ time: t + (bit+1)*2, events: { [winner.node]: wb }, busBit: wb });
+    for(let o of others) {
+      if(o.bits[bit] !== undefined) {
+        S.arbHistory.push({ time: t + (bit+1)*2, events: { [o.node]: parseInt(o.bits[bit]) }});
+        if(parseInt(o.bits[bit]) !== wb && parseInt(o.bits[bit]) === 1) {
+          o.lost = true;
+        }
+      }
+    }
+    others = others.filter(o => !o.lost);
+  }
+
+  let arbLog = document.getElementById('arbLog');
+  let recent = S.busLog.slice(-6).reverse();
+  arbLog.innerHTML = (recent.length > 0 ? recent.map(l =>
+    `<span class="l-t">[${new Date(l.t).toISOString().slice(11,19)}]</span>` +
+    (l.msg === 'error' ? `<span class="l-e">节点${String.fromCharCode(65+l.node)} 错误</span>` :
+     l.msg === 'recovery' ? `<span class="l-g">节点${String.fromCharCode(65+l.node)} Bus Off恢复</span>` :
+     `<span class="l-w">节点${String.fromCharCode(65+l.node)} 连续错误</span>`)
+  ).join('<br>') : `<span class="l-g">[${new Date().toISOString().slice(11,19)}]</span> 仲裁完成: 节点${String.fromCharCode(65+winner.node)} (ID=0x${winner.id.toString(16)}) 赢得总线访问权`) +
+    `<br><span class="l-t">ID=0x${winner.id.toString(16)} DLC=${winner.dlc} ` + calcFrameTime(S.nodes[winner.node]).toFixed(0) + 'μs</span>';
+}
+
+let lastFrameTime = 0;
+function loop(ts) {
+  if(!lastFrameTime) lastFrameTime = ts;
+  let dt = (ts - lastFrameTime) / 1000;
+  lastFrameTime = ts;
+  if(dt > 0.1) dt = 0.016;
+
+  document.getElementById('spdVal').textContent = S.simSpeed;
+
+  if(S.running) {
+    simStep(dt);
+    if(S.totalFrames % 2 === 0) updateErrorUI();
+  }
+  drawAll();
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateNodesUI();
+  updateStats();
+  drawAll();
+  requestAnimationFrame(loop);
+});
+
+window.addEventListener('message', (e) => {
+  if(!e.data || typeof e.data.type !== 'string') return;
+  switch(e.data.type) {
+    case 'set-param': if(S.hasOwnProperty(e.data.key)) S[e.data.key] = e.data.value; break;
+    case 'pause': S.running = false; break;
+    case 'resume': S.running = true; break;
+    case 'reset': resetSim(); break;
+  }
+  if(S.running) window.parent && window.parent.postMessage({ type: 'sim-status', payload: { running: true, busLoad: S.busLoad, frameRate: S.frameRateAvg } }, '*');
+});
+</script>
+</body>
+</html>

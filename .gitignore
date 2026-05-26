@@ -1,0 +1,43 @@
+# === 私有/内部目录 ===
+.superpowers/
+.trae/
+docs/
+自我评估/
+
+# === Keil MDK 编译产物 ===
+*.o
+*.d
+*.crf
+*.axf
+*.map
+*.lnp
+*.sct
+*.htm
+*.build_log.htm
+*.dep
+*.iex
+*.lst
+RTE/
+*.scvd
+
+# === Keil IDE 用户文件 ===
+*.uvguix.*
+*.uvoptx
+JLinkLog.txt
+JLinkSettings.ini
+
+# === STM32CubeMX ===
+*.ioc
+
+# === Python ===
+venv/
+__pycache__/
+*.py[cod]
+*.db
+
+# === Node.js ===
+node_modules/
+
+# === 通用 ===
+.DS_Store
+Thumbs.db

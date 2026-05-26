@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弹簧-质量-阻尼谐振子仿真 | 知识库交互式学习</title>
+<style>
+:root{
+  --bg:#ffffff;--bg2:#f5f5f4;--tx:#1e1e1c;--tx2:#6b6a64;
+  --dbg:#ffebee;--dtx:#d73a4a;--wbg:#fff3cd;--wtx:#d97706;
+  --obg:#e6ffed;--otx:#22863a;
+  --mono:Consolas,Monaco,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+body.dark{
+  --bg:#1e1e1c;--bg2:#2d2d2a;--tx:#f9f9f8;--tx2:#888780;
+  --dbg:#381b1e;--wbg:#37301b;--obg:#143a20;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--tx);
+     padding:10px 14px;line-height:1.5;overflow-x:hidden;}
+.layout{display:flex;gap:14px;align-items:flex-start;}
+.sidebar{width:320px;min-width:260px;flex-shrink:0;position:sticky;top:10px;
+         max-height:calc(100vh - 20px);overflow-y:auto;padding-right:4px;}
+.main{display:flex;gap:12px;align-items:flex-start;}
+.center-col{flex:1;min-width:340px;max-width:860px;}
+.pole-col{flex-shrink:0;width:min(600px,calc(100vw - 360px - 880px));min-width:360px;
+          position:sticky;top:10px;max-height:calc(100vh - 20px);overflow-y:auto;}
+.phase-wrap canvas{width:460px;height:460px;border-radius:8px;display:block;}
+.pole-wrap canvas{width:100%;height:auto;max-width:600px;aspect-ratio:1/1;border-radius:8px;display:block;}
+.ts-sec{margin-bottom:8px;}
+.ts-sec canvas{width:100%;height:auto;border-radius:8px;display:block;}
+.clb{font-size:11px;color:var(--tx2);margin-bottom:3px;}
+.ci{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2);margin:5px 0;}
+.ci span{white-space:nowrap;min-width:70px;}
+.ci input[type=range]{flex:1;min-width:50px;}
+.vd{min-width:72px;text-align:right;font-family:var(--mono);font-size:11px;}
+.fbox{font-size:11px;font-family:var(--mono);color:var(--tx2);
+      margin:6px 0;padding:5px 8px;background:var(--bg2);border-radius:5px;
+      white-space:nowrap;overflow-x:auto;}
+#badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;display:inline-block;}
+#itxt{font-size:11px;color:var(--tx2);}
+.mts{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0;font-size:11px;}
+.mi{padding:4px 6px;background:var(--bg2);border-radius:3px;}
+.ml{font-weight:500;color:var(--tx);}
+h2{font-size:14px;font-weight:700;margin:0 0 4px;line-height:1.3;}
+details{margin:6px 0;}
+summary{cursor:pointer;font-size:12px;font-weight:600;padding:6px 8px;
+        background:var(--bg2);border-radius:5px;list-style:none;user-select:none;}
+summary::-webkit-details-marker{display:none;}
+summary::before{content:"\25B6 ";font-size:9px;}
+details[open] summary::before{content:"\25BC ";}
+.dc{padding:8px 10px;background:var(--bg2);border-radius:0 0 5px 5px;
+    margin-top:2px;font-size:11px;color:var(--tx2);line-height:1.7;}
+.leg{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;font-size:11px;color:var(--tx2);}
+.btn{font-size:11px;padding:3px 10px;border:1px solid var(--tx2);border-radius:4px;
+     background:var(--bg2);color:var(--tx);cursor:pointer;margin-right:4px;}
+.btn:hover{background:var(--tx2);color:var(--bg);}
+.btn-row{margin:6px 0;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar">
+<h2>弹簧-质量-阻尼谐振子<br>交互式仿真</h2>
+
+<div><span id="badge"></span> <span id="itxt"></span></div>
+
+<div class="fbox">
+  m\·\x\'' + b\·\x\' + k\·\x = F\₀\·cos(\ωt)<br>
+  V = \½k\·\x\²+\½m\·\x\'\² &nbsp;|&nbsp; V\· = \-b\·\x\'\²+F\₀\·\x\'\·cos(\ωt)<br>
+  \ωn = \x221A(k/m) = <span id="vwn">1.000</span> &nbsp;|&nbsp; \ζ = <span id="vzeta">0.150</span>
+</div>
+
+<div class="mts">
+  <div class="mi"><span class="ml">\ωn:</span><span id="mwn">1.000</span></div>
+  <div class="mi"><span class="ml">\ζ:</span><span id="mzeta">0.150</span></div>
+  <div class="mi"><span class="ml">\ωd:</span><span id="mwd">0.989</span></div>
+  <div class="mi"><span class="ml">\σ:</span><span id="msig">0.150</span></div>
+  <div class="mi"><span class="ml">\ωr:</span><span id="mwr">0.954</span></div>
+  <div class="mi"><span class="ml">A_ss:</span><span id="mss">0.000</span></div>
+  <div class="mi"><span class="ml">\τ:</span><span id="mta">\&infin;</span></div>
+  <div class="mi"><span class="ml">\φ:</span><span id="mph">0.0\°</span></div>
+</div>
+
+<details open>
+<summary>系统参数</summary>
+<div class="dc">
+  <div class="ci"><span>质量 m</span>
+    <input type="range" min="0.1" max="3" step="0.1" value="1" id="sm">
+    <span class="vd" id="lm">1.00</span></div>
+  <div class="ci"><span>阻尼 b</span>
+    <input type="range" min="0" max="4" step="0.05" value="0.3" id="sb">
+    <span class="vd" id="lb">0.30</span></div>
+  <div class="ci"><span>刚度 k</span>
+    <input type="range" min="0.05" max="6" step="0.05" value="1" id="sk">
+    <span class="vd" id="lk">1.00</span></div>
+</div>
+</details>
+
+<details open>
+<summary>导出量（双向联动）</summary>
+<div class="dc">
+  <div class="ci"><span>\ωn</span>
+    <input type="range" min="0.2" max="3" step="0.05" value="1" id="swn">
+    <span class="vd" id="lwn">1.00</span></div>
+  <div class="ci"><span>\ζ</span>
+    <input type="range" min="0" max="1.5" step="0.02" value="0.15" id="szeta">
+    <span class="vd" id="lzeta">0.15</span></div>
+</div>
+</details>
+
+<details open>
+<summary>激励参数</summary>
+<div class="dc">
+  <div class="ci"><span>频率 \ω</span>
+    <input type="range" min="0" max="3" step="0.05" value="0" id="sw">
+    <span class="vd" id="lw">0.00</span></div>
+  <div class="ci"><span>幅值 F\₀</span>
+    <input type="range" min="0" max="1" step="0.05" value="0" id="sf">
+    <span class="vd" id="lf">0.00</span></div>
+</div>
+</details>
+
+<details open>
+<summary>初始条件</summary>
+<div class="dc">
+  <div class="ci"><span>x\₀</span>
+    <input type="range" min="-2" max="2" step="0.1" value="1" id="sx0">
+    <span class="vd" id="lx0">1.00</span></div>
+  <div class="ci"><span>\x\'\₀</span>
+    <input type="range" min="-2" max="2" step="0.1" value="0" id="sv0">
+    <span class="vd" id="lv0">0.00</span></div>
+</div>
+</details>
+
+<details open>
+<summary>运行控制</summary>
+<div class="dc">
+  <div class="btn-row">
+    <button class="btn" id="btnPause">\u23F8 暂停</button>
+    <button class="btn" id="btnReset">\u21BA 重置</button>
+    <button class="btn" id="btnDark">\u263E 暗色</button>
+  </div>
+  <div class="ci"><span>播放速度</span>
+    <input type="range" min="0" max="1" step="0.01" value="0.1" id="sspd">
+    <span class="vd" id="lspd">1.00x</span></div>
+  <div class="ci"><span>Y轴 \±R</span>
+    <input type="range" min="1" max="7" step="0.5" value="4" id="syr">
+    <span class="vd" id="lyr">\±4.0</span></div>
+  <div class="ci"><span>极点图 \±R</span>
+    <input type="range" min="0.3" max="5" step="0.1" value="2" id="spoleR">
+    <span class="vd" id="lpoleR">\±2.0</span></div>
+</div>
+</details>
+
+<div class="leg">
+  <span style="color:#D85A30">\u2014 x(t) 总响应</span>
+  <span style="color:#5BAD2E">-- x_h 瞬态</span>
+  <span style="color:#2A8BBF">-- x_p 稳态</span>
+  <span style="color:#534AB7">\u2014 激励</span>
+</div>
+</aside>
+
+<!-- ===== MAIN ===== -->
+<main class="main">
+
+<!-- CENTER column -->
+<div class="center-col">
+
+<div class="phase-wrap">
+  <div class="clb">相空间 (x, \x\') | 虚线椭圆 = V 等值面</div>
+  <canvas id="pc"></canvas>
+</div>
+
+<div class="ts-sec">
+  <div class="clb">x(t): 总响应 / 瞬态 / 稳态 / 激励</div>
+  <canvas id="xc"></canvas>
+</div>
+
+<div class="ts-sec" style="border-top:2px solid #C8920A;padding-top:4px;margin-top:6px;">
+  <div class="clb">\uD83C\uDFAC 卷积动画 \u2014 u(\τ) 蓝线 + h(t\-\τ) 金线滑动 + 被积函数紫色填充</div>
+  <canvas id="convc"></canvas>
+</div>
+
+<div class="ts-sec">
+  <div class="clb">响应分解: <span style="color:#D85A30">x_zi 零输入</span>(虚线) + <span style="color:#C8920A">x_zs 零状态</span>(点划线) = <span style="color:var(--tx)">x 全响应</span>(实线)</div>
+  <canvas id="decompc"></canvas>
+</div>
+
+</div><!-- .center-col -->
+
+<!-- RIGHT column: pole diagram -->
+<div class="pole-col">
+  <div class="clb">s 平面极点图 | <span id="spc-lbl">\u03C9n=1.000 | \u03B6=0.150 | \u62D6\u52A8 \u00D7 \u4EA4\u4E92</span></div>
+  <div class="pole-wrap">
+    <canvas id="spc"></canvas>
+  </div>
+</div>
+
+</main>
+</div><!-- .layout -->
+
+<script>
+(function(){
+  /* ======== Theme detection ======== */
+  let dk = matchMedia("(prefers-color-scheme:dark)").matches;
+  function applyTheme(){
+    document.body.classList.toggle("dark",dk);
+  }
+  applyTheme();
+
+  /* ======== Color palette ======== */
+  const C = {
+    bg:   ()=>dk?"#1e1e1c":"#f9f9f8",
+    gc:   ()=>dk?"rgba(210,210,200,0.07)":"rgba(0,0,0,0.05)",
+    axc:  ()=>dk?"rgba(210,210,200,0.28)":"rgba(0,0,0,0.22)",
+    labC: ()=>dk?"#888780":"#6b6a64",
+    cline:()=>dk?"rgba(180,175,160,0.22)":"rgba(60,60,50,0.14)",
+    purple:"#534AB7", teal:"#0F6E56", coral:"#D85A30",
+    gold:"#C8920A", lime:"#5BAD2E", sky:"#2A8BBF"
+  };
+
+  /* ======== Canvas setup ======== */
+  const PR = Math.min(window.devicePixelRatio||1, 2);
+  const SZP=460, SZPC=600, SZW=860, SZX=200, SZCONV=220, SZDC=160;
+
+  function mkC(id,w,h){
+    const c=document.getElementById(id);
+    c.width=w*PR; c.height=h*PR;
+    const ctx=c.getContext("2d"); ctx.scale(PR,PR); return ctx;
+  }
+  let pctx,sctx,xctx,convctx,decompctx;
+  function initCanvases(){
+    pctx=mkC("pc",SZP,SZP);
+    sctx=mkC("spc",SZPC,SZPC);
+    xctx=mkC("xc",SZW,SZX);
+    convctx=mkC("convc",SZW,SZCONV);
+    decompctx=mkC("decompc",SZW,SZDC);
+  }
+  initCanvases();
+
+  /* ======== Simulation state ======== */
+  const DT=0.025;
+  const TRAIL=800, TSLEN=600;
+  const N_H=2000;
+  const hImpulse=new Float64Array(N_H+1);
+
+  let mP=1, bP=0.3, kP=1, wP=0, f0P=0, x0P=1, v0P=0;
+  let speedP=0.1, yR=4, poleScaleR=2.0;
+  let sx,sv,st;
+  let trX=[],trV=[];
+  let tsX=[],tsXh=[],tsXp=[],tsEx=[];
+  let tsZS=[],tsZI=[];
+  let zsXs,zsVs,ziXs,ziVs;
+  let stepsAccum=0;
+  let wnP=1,zetaP=0.15,sigP=0.15,wd=1;
+  let C1=0,C2=0,Ass=0,phi=0;
+  let HreP=0,HimP=0;
+  let poleT={ox:0,oy:0,scl:1};
+  let poleDrag=false,inputDrag=false;
+  let paused=false;
+
+  /* ======== Transfer function analysis ======== */
+  function computeIC(){
+    const sig=bP/(2*mP);
+    const wn=Math.sqrt(kP/mP);
+    const disc=wn*wn-sig*sig;
+    wd=disc>1e-8?Math.sqrt(disc):1e-4;
+    wnP=wn; zetaP=sig/Math.max(wn,1e-6); sigP=sig;
+    // H(jw) for particular solution
+    const D_re=kP-mP*wP*wP;
+    const D_im=bP*wP;
+    const D2=D_re*D_re+D_im*D_im;
+    if(f0P<1e-9||D2<1e-8){
+      Ass=0;phi=0;HreP=0;HimP=0;
+      C1=x0P;C2=(v0P+sig*x0P)/Math.max(wd,1e-6);
+    } else {
+      HreP=D_re/D2; HimP=-D_im/D2;
+      Ass=f0P/Math.sqrt(D2);
+      phi=Math.atan2(D_im,D_re);
+      const xp0=f0P*HreP;
+      const vp0=f0P*(0*HreP-wP*HimP); // sigma_f=0
+      if(disc<=0){C1=x0P-xp0;C2=v0P-vp0+sig*C1;}
+      else{C1=x0P-xp0;C2=(v0P+sig*C1-vp0)/wd;}
+    }
+  }
+
+  function xhAt(t){
+    const sig=bP/(2*mP);
+    if(bP>=2*Math.sqrt(kP*mP)-1e-6) return(C1+C2*t)*Math.exp(-sig*t);
+    return Math.exp(-sig*t)*(C1*Math.cos(wd*t)+C2*Math.sin(wd*t));
+  }
+  function xpAt(t){
+    if(f0P<1e-9) return 0;
+    return f0P*(HreP*Math.cos(wP*t)-HimP*Math.sin(wP*t));
+  }
+
+  /* ======== RK4 solver ======== */
+  function rk4(x,v,t,force){
+    const f=(x,v,t)=>[v,(-bP*v-kP*x+force(t))/mP];
+    const[a1,b1]=f(x,v,t);
+    const[a2,b2]=f(x+DT/2*a1,v+DT/2*b1,t+DT/2);
+    const[a3,b3]=f(x+DT/2*a2,v+DT/2*b2,t+DT/2);
+    const[a4,b4]=f(x+DT*a3,v+DT*b3,t+DT);
+    return[x+DT/6*(a1+2*a2+2*a3+a4),v+DT/6*(b1+2*b2+2*b3+b4),t+DT];
+  }
+
+  /* ======== Impulse response pre-computation ======== */
+  function precomputeH(){
+    let hx=0, hv=1.0/mP;
+    const f=(x,v)=>[v,(-bP*v-kP*x)/mP];
+    for(let k=0;k<=N_H;k++){
+      hImpulse[k]=hx;
+      const[a1,b1]=f(hx,hv);
+      const[a2,b2]=f(hx+DT/2*a1,hv+DT/2*b1);
+      const[a3,b3]=f(hx+DT/2*a2,hv+DT/2*b2);
+      const[a4,b4]=f(hx+DT*a3,hv+DT*b3);
+      hx+=DT/6*(a1+2*a2+2*a3+a4);
+      hv+=DT/6*(b1+2*b2+2*b3+b4);
+    }
+  }
+
+  /* ======== Reset ======== */
+  function reset(){
+    sx=x0P; sv=v0P; st=0; stepsAccum=0;
+    trX=[]; trV=[];
+    tsX=[]; tsXh=[]; tsXp=[]; tsEx=[];
+    tsZS=[]; tsZI=[];
+    zsXs=0; zsVs=0; ziXs=x0P; ziVs=v0P;
+    computeIC(); precomputeH();
+  }
+
+  /* ======== Drawing helpers ======== */
+  function plotToY(d,mn,mx,y0,ph){
+    return y0+ph-(d-mn)/Math.max(mx-mn,1e-6)*ph*0.84-ph*0.08;
+  }
+  function drawLine(ctx,W,data,mn,mx,y0,ph,col,lw,dash){
+    if(data.length<2) return;
+    const len=data.length, denom=Math.max(TSLEN-1,1);
+    ctx.strokeStyle=col; ctx.lineWidth=lw||1.5; ctx.setLineDash(dash||[]);
+    ctx.beginPath();
+    data.forEach((d,i)=>{
+      const px=6+(i+TSLEN-len)/denom*(W-12);
+      i===0?ctx.moveTo(px,plotToY(d,mn,mx,y0,ph)):ctx.lineTo(px,plotToY(d,mn,mx,y0,ph));
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  function drawZero(ctx,W,mn,mx,y0,ph){
+    if(mn>=0||mx<=0) return;
+    const zy=plotToY(0,mn,mx,y0,ph);
+    ctx.strokeStyle=C.gc(); ctx.lineWidth=0.5; ctx.setLineDash([2,4]);
+    ctx.beginPath(); ctx.moveTo(6,zy); ctx.lineTo(W-6,zy); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  function drawArrow(c,x1,y1,x2,y2,col,lw){
+    const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+    if(len<2) return;
+    const hs=Math.min(9,len*0.35),ang=Math.atan2(dy,dx);
+    c.strokeStyle=col; c.lineWidth=lw||1.6; c.setLineDash([]);
+    c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+    c.fillStyle=col;
+    c.beginPath(); c.moveTo(x2,y2);
+    c.lineTo(x2-hs*Math.cos(ang-0.4),y2-hs*Math.sin(ang-0.4));
+    c.lineTo(x2-hs*Math.cos(ang+0.4),y2-hs*Math.sin(ang+0.4));
+    c.closePath(); c.fill();
+  }
+
+  /* ======== Phase portrait ======== */
+  function drawPhase(){
+    const c=pctx, N=SZP, XR=4.0;
+    const bg=C.bg(), gc=C.gc(), axc=C.axc(), labC=C.labC(), cline=C.cline();
+    c.fillStyle=bg; c.fillRect(0,0,N,N);
+    const p=(x,v)=>[(x+XR)/(2*XR)*N,(XR-v)/(2*XR)*N];
+    const[ox,oy]=p(0,0);
+    // Grid
+    c.strokeStyle=gc; c.lineWidth=0.4;
+    for(let g=-3;g<=3;g++){
+      const[gx]=p(g,0); const[,gy]=p(0,g);
+      c.beginPath(); c.moveTo(gx,0); c.lineTo(gx,N); c.stroke();
+      c.beginPath(); c.moveTo(0,gy); c.lineTo(N,gy); c.stroke();
+    }
+    // V contour ellipses
+    c.strokeStyle=cline; c.lineWidth=0.7; c.setLineDash([4,5]);
+    const sqk=Math.sqrt(kP), sqm=Math.sqrt(mP);
+    [0.5,1,1.5,2,2.5,3].forEach(r=>{
+      const ax=(r/sqk)/(2*XR)*N;
+      const ay=(r/sqm)/(2*XR)*N;
+      c.beginPath(); c.ellipse(ox,oy,ax,ay,0,0,2*Math.PI); c.stroke();
+    });
+    c.setLineDash([]);
+    // Axes
+    c.strokeStyle=axc; c.lineWidth=0.8;
+    c.beginPath(); c.moveTo(ox,0); c.lineTo(ox,N); c.stroke();
+    c.beginPath(); c.moveTo(0,oy); c.lineTo(N,oy); c.stroke();
+    // Tick labels
+    c.font="10px sans-serif";
+    for(let t=-3;t<=3;t++){
+      if(t===0) continue;
+      const[tx]=p(t,0); const[,ty]=p(0,t);
+      c.fillStyle=axc; c.fillRect(tx-0.5,oy-2,1,4);
+      c.fillStyle=labC; c.textAlign="center"; c.fillText(t,tx,oy+12);
+      c.fillStyle=axc; c.fillRect(ox-2,ty-0.5,4,1);
+      c.fillStyle=labC; c.textAlign="right"; c.fillText(t,ox-4,ty+3);
+    }
+    c.fillStyle=labC; c.font="13px sans-serif";
+    c.textAlign="left"; c.fillText("x",N-12,oy-4);
+    c.fillText("\u1E8B",ox+5,12);
+    // Vdot info
+    const vdNow=-bP*sv*sv+f0P*sv*Math.cos(wP*st);
+    c.font="10px sans-serif"; c.textAlign="right";
+    c.fillStyle=labC; c.fillText("\u03BB=-\u03C3="+(-sigP).toFixed(2),N-4,N-4);
+    c.fillStyle=vdNow<-0.01?C.teal:(vdNow>0.01?C.coral:labC);
+    c.fillText("V\u0307="+vdNow.toFixed(3),N-4,N-14);
+    // Phase trajectory
+    if(trX.length>1){
+      for(let i=1;i<trX.length;i++){
+        const a=i/trX.length;
+        const[x1,y1]=p(trX[i-1],trV[i-1]);
+        const[x2,y2]=p(trX[i],trV[i]);
+        c.strokeStyle=dk?`rgba(127,119,221,${a*0.8})`:`rgba(83,74,183,${a*0.75})`;
+        c.lineWidth=1.2; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+      }
+      const[cx,cy]=p(trX[trX.length-1],trV[trV.length-1]);
+      c.fillStyle=C.purple; c.beginPath(); c.arc(cx,cy,3.5,0,2*Math.PI); c.fill();
+      c.fillStyle=bg; c.beginPath(); c.arc(cx,cy,1.2,0,2*Math.PI); c.fill();
+      // Velocity vector
+      const scl=N/(2*XR), maxPx=55;
+      const xdd=(-bP*sv-kP*sx+f0P*Math.cos(wP*st))/mP;
+      const vmag=Math.sqrt(sv*sv+xdd*xdd);
+      if(vmag>0.01){
+        const vs=Math.min(scl,maxPx/vmag);
+        drawArrow(c,cx,cy,cx+sv*vs,cy-xdd*vs,C.teal,2);
+      }
+      // Gradient V
+      const gvx=kP*sx, gvy=mP*sv;
+      const gmag=Math.sqrt(gvx*gvx+gvy*gvy);
+      if(gmag>0.01){
+        const gs=Math.min(scl,maxPx/gmag);
+        drawArrow(c,cx,cy,cx+gvx*gs,cy-gvy*gs,C.lime,1.6);
+      }
+      c.font='9px sans-serif'; c.textAlign='right';
+      c.fillStyle=C.teal; c.fillText('\u2192 (\u1E8B,\u1E8D\u0308)',N-4,N-26);
+      c.fillStyle=C.lime; c.fillText('\u2192 \u2207V=(kx,m\u1E8B)',N-4,N-38);
+    }
+  }
+
+  /* ======== Pole diagram with H(s) heatmap ======== */
+  function drawPole(){
+    const c=sctx, N=SZPC;
+    const bg=C.bg(), gc=C.gc(), axc=C.axc(), labC=C.labC();
+    c.fillStyle=bg; c.fillRect(0,0,N,N);
+    const wn=wnP, zeta=zetaP, sig=sigP;
+    const is_under=zeta<1-1e-4;
+    const scl=N*0.42/Math.max(poleScaleR,0.2);
+    const ox=N*0.6, oy=N*0.5;
+    poleT.ox=ox; poleT.oy=oy; poleT.scl=scl;
+    const s2x=s=>ox+s*scl;
+    const w2y=w=>oy-w*scl;
+
+    // H(s) heatmap overlay
+    const RES=180;
+    const off=document.createElement('canvas');
+    off.width=RES; off.height=RES;
+    const oc=off.getContext('2d');
+    const img=oc.createImageData(RES,RES);
+    const d=img.data;
+    const logMax=3.5;
+    for(let py=0;py<RES;py++){
+      const wv=(oy-py*N/RES)/scl;
+      for(let px=0;px<RES;px++){
+        const sv=(px*N/RES-ox)/scl;
+        const re=mP*(sv*sv-wv*wv)+bP*sv+kP;
+        const im=wv*(2*mP*sv+bP);
+        const absH2=re*re+im*im;
+        const t=absH2>1e-12?Math.min(Math.log(1+1/Math.sqrt(absH2)),logMax)/logMax:1.0;
+        let r,g,b;
+        if(dk){
+          if(t<0.33){const s=t/0.33;r=0;g=Math.round(s*60);b=Math.round(100+s*120);}
+          else if(t<0.66){const s=(t-0.33)/0.33;r=Math.round(s*200);g=Math.round(60+s*140);b=Math.round(220-s*180);}
+          else{const s=(t-0.66)/0.34;r=Math.round(200+s*55);g=Math.round(200-s*30);b=40;}
+        } else {
+          if(t<0.33){const s=t/0.33;r=Math.round(210+s*20);g=Math.round(225-s*30);b=Math.round(245-s*50);}
+          else if(t<0.66){const s=(t-0.33)/0.33;r=Math.round(230+s*25);g=Math.round(195+s*40);b=Math.round(195-s*145);}
+          else{const s=(t-0.66)/0.34;r=255;g=Math.round(235-s*110);b=Math.round(50-s*30);}
+        }
+        const idx=(py*RES+px)*4;
+        d[idx]=r;d[idx+1]=g;d[idx+2]=b;d[idx+3]=Math.round(0.55*255);
+      }
+    }
+    oc.putImageData(img,0,0);
+    c.drawImage(off,0,0,N,N);
+
+    // RHP shading
+    c.fillStyle=dk?'rgba(200,50,50,0.06)':'rgba(255,160,160,0.1)';
+    c.fillRect(ox,0,N-ox,N);
+
+    // Grid
+    const gStep=wn>2?1:(wn>0.8?0.5:0.25);
+    c.strokeStyle=gc; c.lineWidth=0.3;
+    const gRange=Math.ceil(N/scl/2)+1;
+    for(let g=-gRange;g<=gRange;g++){
+      if(g===0) continue;
+      const gx=s2x(g*gStep); const gy=w2y(g*gStep);
+      if(gx>0&&gx<N){c.beginPath();c.moveTo(gx,0);c.lineTo(gx,N);c.stroke();}
+      if(gy>0&&gy<N){c.beginPath();c.moveTo(0,gy);c.lineTo(N,gy);c.stroke();}
+    }
+
+    // wn circle
+    const rnPx=wn*scl;
+    c.strokeStyle=dk?'rgba(140,130,100,0.5)':'rgba(80,70,50,0.35)';
+    c.lineWidth=1; c.setLineDash([5,5]);
+    c.beginPath(); c.arc(ox,oy,rnPx,0,2*Math.PI); c.stroke();
+    c.setLineDash([]);
+    c.font='10px sans-serif'; c.fillStyle=labC; c.textAlign='left';
+    c.fillText('|p|=\u03C9n='+wn.toFixed(3),ox-rnPx*0.6,oy-rnPx-3);
+
+    // Axes
+    c.strokeStyle=axc; c.lineWidth=1.2;
+    c.beginPath(); c.moveTo(4,oy); c.lineTo(N-4,oy); c.stroke();
+    c.beginPath(); c.moveTo(ox,N-4); c.lineTo(ox,4); c.stroke();
+    const ah=12;
+    c.fillStyle=axc;
+    c.beginPath(); c.moveTo(N-4,oy); c.lineTo(N-4-ah,oy-5); c.lineTo(N-4-ah,oy+5); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(ox,4); c.lineTo(ox-5,4+ah); c.lineTo(ox+5,4+ah); c.closePath(); c.fill();
+    c.fillStyle=labC; c.font='11px sans-serif';
+    c.textAlign='right'; c.fillText('Re(s)',N-4,oy-6);
+    c.textAlign='left'; c.fillText('Im(s)',ox+6,16);
+
+    // Axis tick labels
+    c.font='9px sans-serif'; c.fillStyle=labC;
+    for(let g=-gRange;g<=gRange;g++){
+      if(g===0) continue;
+      const gx=s2x(g*gStep); const gy=w2y(g*gStep);
+      if(gx>10&&gx<N-10){c.textAlign='center';c.fillText((g*gStep).toFixed(gStep<1?1:0),gx,oy+14);}
+      if(gy>10&&gy<N-10&&Math.abs(gx-ox)>20){c.textAlign='right';c.fillText((g*gStep).toFixed(gStep<1?1:0),ox-4,gy+4);}
+    }
+    c.textAlign='right'; c.fillText('0',ox-4,oy+14);
+
+    // Stability labels
+    c.font='10px sans-serif';
+    c.fillStyle=dk?'rgba(100,180,100,0.7)':'rgba(20,120,20,0.6)';
+    c.textAlign='center'; c.fillText('LHP (\u7A33\u5B9A)',ox*0.5,18);
+    c.fillStyle=dk?'rgba(220,80,80,0.7)':'rgba(180,30,30,0.6)';
+    c.fillText('RHP (\u4E0D\u7A33\u5B9A)',(ox+N)*0.5,18);
+
+    if(is_under){
+      const px=s2x(-sig), py_up=w2y(wd), py_dn=w2y(-wd);
+      // Projection lines
+      c.strokeStyle=dk?'rgba(180,170,130,0.3)':'rgba(80,70,50,0.25)';
+      c.lineWidth=0.7; c.setLineDash([3,4]);
+      c.beginPath(); c.moveTo(px,py_up); c.lineTo(px,oy); c.stroke();
+      c.beginPath(); c.moveTo(px,py_up); c.lineTo(ox,py_up); c.stroke();
+      c.beginPath(); c.moveTo(px,py_dn); c.lineTo(px,oy); c.stroke();
+      c.beginPath(); c.moveTo(px,py_dn); c.lineTo(ox,py_dn); c.stroke();
+      c.setLineDash([]);
+      // sigma span
+      if(sig>0.02){
+        c.strokeStyle=C.gold; c.lineWidth=1.2;
+        c.beginPath(); c.moveTo(ox,oy+22); c.lineTo(px,oy+22); c.stroke();
+        c.beginPath(); c.moveTo(ox,oy+16); c.lineTo(ox,oy+28); c.stroke();
+        c.beginPath(); c.moveTo(px,oy+16); c.lineTo(px,oy+28); c.stroke();
+        c.font='9px sans-serif'; c.fillStyle=C.gold; c.textAlign='center';
+        c.fillText('\u03C3='+sig.toFixed(3),(ox+px)/2,oy+38);
+      }
+      // wd span
+      if(wd>0.05){
+        c.strokeStyle=C.teal; c.lineWidth=1.2;
+        c.beginPath(); c.moveTo(ox+22,oy); c.lineTo(ox+22,py_up); c.stroke();
+        c.beginPath(); c.moveTo(ox+16,oy); c.lineTo(ox+28,oy); c.stroke();
+        c.beginPath(); c.moveTo(ox+16,py_up); c.lineTo(ox+28,py_up); c.stroke();
+        c.font='9px sans-serif'; c.fillStyle=C.teal; c.textAlign='left';
+        c.fillText('\u03C9d='+wd.toFixed(3),ox+32,(oy+py_up)/2+4);
+      }
+      // Radius lines
+      c.strokeStyle=dk?'rgba(120,200,120,0.5)':'rgba(20,130,20,0.4)';
+      c.lineWidth=1.2; c.setLineDash([4,3]);
+      c.beginPath(); c.moveTo(ox,oy); c.lineTo(px,py_up); c.stroke();
+      c.beginPath(); c.moveTo(ox,oy); c.lineTo(px,py_dn); c.stroke();
+      c.setLineDash([]);
+      // zeta angle arc
+      const ang_pole=Math.atan2(py_up-oy,px-ox);
+      const r_arc=rnPx*0.38;
+      c.strokeStyle=C.sky; c.lineWidth=1.6;
+      c.beginPath(); c.arc(ox,oy,r_arc,-Math.PI,ang_pole,false); c.stroke();
+      const ang_mid=(-Math.PI+ang_pole)/2;
+      c.font='9px sans-serif'; c.fillStyle=C.sky; c.textAlign='center';
+      c.fillText('\u03B6='+zeta.toFixed(3),ox+(r_arc+32)*Math.cos(ang_mid),oy+(r_arc+28)*Math.sin(ang_mid));
+      // Pole markers
+      [[px,py_up],[px,py_dn]].forEach(([ppx,ppy])=>{
+        const R=9;
+        c.strokeStyle=C.coral; c.lineWidth=2.8;
+        c.beginPath(); c.moveTo(ppx-R,ppy-R); c.lineTo(ppx+R,ppy+R); c.stroke();
+        c.beginPath(); c.moveTo(ppx+R,ppy-R); c.lineTo(ppx-R,ppy+R); c.stroke();
+      });
+      c.fillStyle=C.coral; c.font='10px sans-serif';
+      c.textAlign=px>ox+10?'right':'left';
+      c.fillText('p\u2081='+(-sig).toFixed(3)+'+'+wd.toFixed(3)+'j',px+(px>ox+10?-6:6),py_up-12);
+      c.fillText('p\u2082='+(-sig).toFixed(3)+'\u2212'+wd.toFixed(3)+'j',px+(px>ox+10?-6:6),py_dn+18);
+      // wr marker
+      if(zeta<0.7072&&wn>0.01){
+        const wr=wn*Math.sqrt(Math.max(0,1-2*zeta*zeta));
+        const wr_y=w2y(wr);
+        if(wr_y>4&&wr_y<N-4){
+          const ds=6;
+          c.fillStyle=C.gold;
+          c.beginPath();
+          c.moveTo(ox,wr_y-ds); c.lineTo(ox+ds,wr_y); c.lineTo(ox,wr_y+ds); c.lineTo(ox-ds,wr_y);
+          c.closePath(); c.fill();
+          c.font='9px sans-serif'; c.fillStyle=C.gold; c.textAlign='right';
+          c.fillText('\u03C9r='+wr.toFixed(3),ox-ds-3,wr_y+3);
+        }
+      }
+    } else {
+      // Overdamped / critically damped
+      const sigma=bP/(2*mP);
+      const delta=Math.sqrt(Math.max(0,sigma*sigma-wnP*wnP));
+      const p1_r=-(sigma-delta), p2_r=-(sigma+delta);
+      [[p1_r,'p\u2081'],[p2_r,'p\u2082']].forEach(([pr,lbl])=>{
+        const ppx=s2x(pr);
+        if(ppx<4||ppx>N-4) return;
+        const R=6;
+        c.strokeStyle=C.coral; c.lineWidth=2;
+        c.beginPath(); c.moveTo(ppx-R,oy-R); c.lineTo(ppx+R,oy+R); c.stroke();
+        c.beginPath(); c.moveTo(ppx+R,oy-R); c.lineTo(ppx-R,oy+R); c.stroke();
+        c.fillStyle=C.coral; c.font='9px sans-serif'; c.textAlign='center';
+        c.fillText(lbl+'='+pr.toFixed(3),ppx,oy-10);
+      });
+    }
+
+    // Input frequency markers
+    if(f0P>1e-9){
+      const sfx=s2x(0), sfy_up=w2y(wP), sfy_dn=w2y(-wP);
+      c.strokeStyle=C.purple; c.lineWidth=0.8; c.setLineDash([3,4]);
+      if(sfx>0&&sfx<N){c.beginPath();c.moveTo(sfx,0);c.lineTo(sfx,N);c.stroke();}
+      c.setLineDash([]);
+      [sfy_up,sfy_dn].forEach(sfy=>{
+        if(sfy<4||sfy>N-4) return;
+        c.fillStyle=C.purple+'25';
+        c.beginPath(); c.arc(sfx,sfy,9,0,2*Math.PI); c.fill();
+        c.strokeStyle=C.purple; c.lineWidth=2.2;
+        c.beginPath(); c.arc(sfx,sfy,9,0,2*Math.PI); c.stroke();
+        c.fillStyle=C.purple;
+        c.beginPath(); c.arc(sfx,sfy,2.5,0,2*Math.PI); c.fill();
+      });
+      if(sfy_up>18&&sfy_up<N-18&&sfx>4&&sfx<N-4){
+        c.font='9px sans-serif'; c.fillStyle=C.purple; c.textAlign='left';
+        c.fillText('s\u1D20 = j\u00B7'+wP.toFixed(2),sfx+14,sfy_up-10);
+        const Hsf=Ass>0&&f0P>1e-9?Ass/f0P:0;
+        c.fillText('|H(s\u1D20)|='+Hsf.toFixed(3),sfx+14,sfy_up+4);
+      }
+    }
+
+    // Info box
+    c.fillStyle=dk?'rgba(40,40,38,0.88)':'rgba(248,248,246,0.88)';
+    c.beginPath();
+    if(c.roundRect) c.roundRect(4,N-80,240,76,5);
+    else c.rect(4,N-80,240,76);
+    c.fill();
+    c.font='9px sans-serif'; c.textAlign='left';
+    c.fillStyle=C.lime;  c.fillText('\u03C9n='+wn.toFixed(3),10,N-60);
+    c.fillStyle=C.teal;  c.fillText('\u03C9d='+wd.toFixed(3)+'  (\u6781\u70B9\u865A\u90E8)',10,N-44);
+    c.fillStyle=C.gold;  c.fillText('\u03C3='+sigP.toFixed(3),10,N-28);
+    c.fillStyle=C.sky;   c.fillText('\u03B6='+zetaP.toFixed(3),10,N-12);
+
+    // Drag hint
+    c.fillStyle=dk?'rgba(30,30,28,0.8)':'rgba(248,248,246,0.8)';
+    const hx=N-200,hy=N-34;
+    if(c.roundRect){c.beginPath();c.roundRect(hx,hy,196,30,4);c.fill();}
+    else c.fillRect(hx,hy,196,30);
+    c.font='9px sans-serif'; c.textAlign='left';
+    c.fillStyle=C.coral; c.fillText('\u2297 \u62D6\u52A8\u6781\u70B9 \u00D7 (\u6539 b,k)',hx+6,hy+12);
+    c.fillStyle=C.purple; c.fillText('\u2299 \u62D6\u52A8\u8F93\u5165\u70B9 \u25CB (\u6539 \u03C9)',hx+6,hy+24);
+  }
+
+  /* ======== x(t) time series ======== */
+  function drawXC(){
+    const c=xctx, W=SZW, H=SZX;
+    const bg=C.bg(), gc=C.gc(), labC=C.labC();
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    const mn=-yR, mx=yR;
+    drawZero(c,W,mn,mx,0,H);
+    drawLine(c,W,tsEx,mn,mx,0,H,C.purple,1);
+    drawLine(c,W,tsXh,mn,mx,0,H,C.lime,0.8,[4,4]);
+    drawLine(c,W,tsXp,mn,mx,0,H,C.sky,0.8,[4,4]);
+    drawLine(c,W,tsX,mn,mx,0,H,C.coral,1.6);
+    c.font="11px sans-serif"; c.textAlign="left";
+    c.fillStyle=C.coral;  c.fillText("x(t) \u603B\u54CD\u5E94",4,12);
+    c.fillStyle=C.lime;   c.fillText("x_h \u77AC\u6001",4,24);
+    c.fillStyle=C.sky;    c.fillText("x_p \u7A33\u6001",4,36);
+    c.fillStyle=C.purple; c.fillText("\u6FC0\u52B1",4,48);
+  }
+
+  /* ======== Convolution animation ======== */
+  function drawConv(){
+    const c=convctx, W=SZW, H=SZCONV;
+    const bg=C.bg(), gc=C.gc(), labC=C.labC();
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    const T_AXIS=30;
+    const ml=48, mr=14, mt=36, mb=34;
+    const PW=W-ml-mr, PH=H-mt-mb;
+    const t2x=tau=>ml+(tau/T_AXIS)*PW;
+    const t_now=st;
+    let maxH=0.001;
+    for(let k=0;k<=Math.min(N_H,400);k++) if(Math.abs(hImpulse[k])>maxH) maxH=Math.abs(hImpulse[k]);
+    const Y_MAX=Math.max(f0P*1.1+0.01,maxH*1.2);
+    const v2y=v=>mt+PH*0.5-(v/Y_MAX)*PH*0.44;
+    const zeroY=v2y(0);
+    // Grid
+    c.strokeStyle=gc; c.lineWidth=0.3;
+    c.beginPath(); c.moveTo(ml,mt); c.lineTo(ml,mt+PH); c.stroke();
+    c.beginPath(); c.moveTo(ml,zeroY); c.lineTo(ml+PW,zeroY); c.stroke();
+    [5,10,15,20,25].forEach(ti=>{
+      const tx=t2x(ti);
+      c.beginPath(); c.moveTo(tx,mt); c.lineTo(tx,mt+PH); c.stroke();
+    });
+    // Current time marker
+    const tnx=Math.min(t2x(t_now),ml+PW);
+    c.strokeStyle=C.coral+'88'; c.lineWidth=1.2; c.setLineDash([4,4]);
+    c.beginPath(); c.moveTo(tnx,mt); c.lineTo(tnx,mt+PH); c.stroke();
+    c.setLineDash([]);
+    c.fillStyle=C.coral; c.font='10px sans-serif'; c.textAlign='center';
+    c.fillText('t='+t_now.toFixed(2)+'s',Math.min(tnx,ml+PW-30),mt-8);
+    const nVis=Math.ceil(T_AXIS/DT);
+    // Purple integrand fill
+    if(t_now>DT&&f0P>1e-9){
+      c.fillStyle=C.purple+'35';
+      c.beginPath(); c.moveTo(t2x(0),zeroY);
+      for(let k=0;k<=nVis;k++){
+        const tau=k*DT; if(tau>t_now) break;
+        const u_v=f0P*Math.cos(wP*tau);
+        const hk=Math.round((t_now-tau)/DT);
+        const h_v=(hk>=0&&hk<=N_H)?hImpulse[hk]:0;
+        c.lineTo(t2x(tau),v2y(u_v*h_v));
+      }
+      c.lineTo(t2x(Math.min(t_now,T_AXIS)),zeroY);
+      c.closePath(); c.fill();
+      c.strokeStyle=C.purple; c.lineWidth=1; c.beginPath();
+      let fp=true;
+      for(let k=0;k<=nVis;k++){
+        const tau=k*DT; if(tau>t_now) break;
+        const u_v=f0P*Math.cos(wP*tau);
+        const hk=Math.round((t_now-tau)/DT);
+        const h_v=(hk>=0&&hk<=N_H)?hImpulse[hk]:0;
+        fp?(c.moveTo(t2x(tau),v2y(u_v*h_v)),fp=false):c.lineTo(t2x(tau),v2y(u_v*h_v));
+      }
+      c.stroke();
+    }
+    // Blue u(tau)
+    if(f0P>1e-9&&t_now>0){
+      c.strokeStyle=C.sky; c.lineWidth=1.8; c.beginPath();
+      let fp=true;
+      for(let k=0;k<=nVis;k++){
+        const tau=k*DT; if(tau>t_now) break;
+        const py=v2y(f0P*Math.cos(wP*tau));
+        fp?(c.moveTo(t2x(tau),py),fp=false):c.lineTo(t2x(tau),py);
+      }
+      c.stroke();
+    }
+    // Gold h(t-tau)
+    if(t_now>0){
+      c.strokeStyle=C.gold; c.lineWidth=1.8; c.beginPath();
+      let fp=true;
+      for(let k=0;k<=nVis;k++){
+        const tau=k*DT; if(tau>t_now) break;
+        const hk=Math.round((t_now-tau)/DT);
+        const h_v=(hk>=0&&hk<=N_H)?hImpulse[hk]:0;
+        fp?(c.moveTo(t2x(tau),v2y(h_v)),fp=false):c.lineTo(t2x(tau),v2y(h_v));
+      }
+      c.stroke();
+    }
+    // Legend
+    c.font='10px sans-serif'; c.textAlign='left';
+    c.fillStyle=C.sky;    c.fillText('u(\u03C4) \u6FC0\u52B1\u5386\u53F2',ml+4,mt-16);
+    c.fillStyle=C.gold;   c.fillText('h(t\u2212\u03C4) \u7FFB\u8F6C\u51B2\u6FC0\u54CD\u5E94',ml+140,mt-16);
+    c.fillStyle=C.purple; c.fillText('u\u00B7h \u88AB\u79EF\u51FD\u6570',ml+310,mt-16);
+    // Tau axis
+    c.font='9px sans-serif'; c.fillStyle=labC; c.textAlign='center';
+    [0,5,10,15,20,25,30].forEach(ti=>c.fillText(ti,t2x(ti),mt+PH+14));
+    c.fillText('\u03C4 (s)',ml+PW+4,mt+PH+14);
+    // Verification
+    const x_zs_now=tsZS.length?tsZS[tsZS.length-1]:0;
+    const x_zi_now=tsZI.length?tsZI[tsZI.length-1]:0;
+    const x_tot_now=tsX.length?tsX[tsX.length-1]:0;
+    const verr=Math.abs(x_zs_now+x_zi_now-x_tot_now);
+    c.fillStyle=C.gold; c.textAlign='right'; c.font='10px sans-serif';
+    c.fillText('x_zs = \u222Bu\u00B7h d\u03C4 = '+x_zs_now.toFixed(4),ml+PW-4,mt+PH+28);
+    c.fillStyle=verr<0.005?'#33bb55':'#dd4444';
+    c.textAlign='left'; c.font='10px sans-serif';
+    c.fillText('\u9A8C\u8BC1: x_zi+x_zs='+(x_zi_now+x_zs_now).toFixed(4)+'  x='+
+      x_tot_now.toFixed(4)+'  \u03B5='+verr.toExponential(2),ml+4,mt+PH+28);
+  }
+
+  /* ======== Response decomposition ======== */
+  function drawDecomp(){
+    const c=decompctx, W=SZW, H=SZDC;
+    const bg=C.bg(), gc=C.gc(), labC=C.labC();
+    c.fillStyle=bg; c.fillRect(0,0,W,H);
+    if(tsZS.length<2) return;
+    const mn=-yR, mx=yR;
+    drawZero(c,W,mn,mx,0,H);
+    drawLine(c,W,tsZI,mn,mx,0,H,C.coral,1.3,[6,4]);
+    drawLine(c,W,tsZS,mn,mx,0,H,C.gold,1.3,[4,2,1,2]);
+    drawLine(c,W,tsX,mn,mx,0,H,labC,1.6);
+    c.font='11px sans-serif'; c.textAlign='left';
+    c.fillStyle=C.coral; c.fillText('x_zi(t) \u96F6\u8F93\u5165',4,12);
+    c.fillStyle=C.gold;  c.fillText('x_zs(t) \u96F6\u72B6\u6001=\u5377\u79EF',4,24);
+    c.fillStyle=labC;    c.fillText('x(t) \u5168\u54CD\u5E94',4,36);
+    const czi=tsZI.length?tsZI[tsZI.length-1]:0;
+    const czs=tsZS.length?tsZS[tsZS.length-1]:0;
+    const ct=tsX.length?tsX[tsX.length-1]:0;
+    c.font='10px sans-serif'; c.textAlign='right';
+    c.fillStyle=C.coral; c.fillText(czi.toFixed(4),W-4,12);
+    c.fillStyle=C.gold;  c.fillText(czs.toFixed(4),W-4,24);
+    c.fillStyle=labC;    c.fillText(ct.toFixed(4),W-4,36);
+  }
+
+  /* ======== Badge & metrics ======== */
+  function updateBadge(){
+    const b=document.getElementById("badge");
+    const it=document.getElementById("itxt");
+    const noDamp=bP<0.05;
+    const isRes=Math.abs(wP-wnP)<0.12*wnP;
+    if(noDamp&&isRes&&f0P>1e-9){
+      b.style.cssText="background:var(--dbg);color:var(--dtx)";
+      b.textContent="\u26A0 \u5171\u632F\u5931\u7A33";
+      it.textContent="\u632F\u5E45\u65E0\u754C\u589E\u957F";
+    } else if(noDamp&&f0P>1e-9){
+      b.style.cssText="background:var(--wbg);color:var(--wtx)";
+      b.textContent="\u25CE Lyapunov \u7A33\u5B9A";
+      it.textContent="\u62CD\u9891/\u51C6\u5468\u671F\uFF0C\u6709\u754C\u4E0D\u6536\u655B";
+    } else if(noDamp){
+      b.style.cssText="background:var(--wbg);color:var(--wtx)";
+      b.textContent="\u25CE Lyapunov \u7A33\u5B9A";
+      it.textContent="\u7B49\u5E45\u632F\u8361\uFF0C\u4E0D\u6536\u655B";
+    } else {
+      b.style.cssText="background:var(--obg);color:var(--otx)";
+      b.textContent="\u2713 \u6E10\u8FD1\u7A33\u5B9A";
+      it.textContent="\u03C4="+(mP/sigP).toFixed(2)+"s, \u03C3="+sigP.toFixed(2);
+    }
+    updateMetrics();
+  }
+
+  function updateMetrics(){
+    const wn=wnP, zeta=zetaP;
+    const hasRes=zeta<0.7072;
+    const wr=hasRes?wn*Math.sqrt(Math.max(0,1-2*zeta*zeta)):NaN;
+    const tau=sigP>0.001?(mP/sigP).toFixed(2)+"s":"\u221E";
+    document.getElementById("mwn").textContent=wn.toFixed(3);
+    document.getElementById("mzeta").textContent=zeta.toFixed(3);
+    document.getElementById("mwd").textContent=wd.toFixed(3);
+    document.getElementById("msig").textContent=sigP.toFixed(3);
+    document.getElementById("mwr").textContent=hasRes?wr.toFixed(3):"\u65E0";
+    document.getElementById("mss").textContent=Ass.toFixed(3);
+    document.getElementById("mta").textContent=tau;
+    document.getElementById("mph").textContent=(phi*180/Math.PI).toFixed(1)+"\u00B0";
+    document.getElementById("vwn").textContent=wn.toFixed(3);
+    document.getElementById("vzeta").textContent=zeta.toFixed(3);
+    const splbl=document.getElementById("spc-lbl");
+    if(splbl) splbl.textContent="\u03C9n="+wn.toFixed(3)+" | \u03B6="+zeta.toFixed(3)+" | \u03C3="+sigP.toFixed(3)+" | \u03C9d="+wd.toFixed(3)+" | \u62D6\u52A8 \u00D7 \u4EA4\u4E92";
+  }
+
+  /* ======== Simulation step ======== */
+  function doStep(){
+    if(Math.abs(sx)>16||Math.abs(sv)>16){reset();return;}
+    const t0=st;
+    const forceFull=t=>f0P*Math.cos(wP*t);
+    const[nx,nv,nt]=rk4(sx,sv,st,forceFull);
+    sx=nx; sv=nv; st=nt;
+    trX.push(sx); trV.push(sv);
+    if(trX.length>TRAIL){trX.shift();trV.shift();}
+    tsX.push(sx);
+    tsXh.push(xhAt(st));
+    tsXp.push(xpAt(st));
+    tsEx.push(f0P*Math.cos(wP*st));
+    if(tsX.length>TSLEN){tsX.shift();tsXh.shift();tsXp.shift();tsEx.shift();}
+    // Zero-state: F!=0, IC=0
+    {
+      const frc=(x,v,t)=>[v,(-bP*v-kP*x+f0P*Math.cos(wP*t))/mP];
+      const[a1,b1]=frc(zsXs,zsVs,t0);
+      const[a2,b2]=frc(zsXs+DT/2*a1,zsVs+DT/2*b1,t0+DT/2);
+      const[a3,b3]=frc(zsXs+DT/2*a2,zsVs+DT/2*b2,t0+DT/2);
+      const[a4,b4]=frc(zsXs+DT*a3,zsVs+DT*b3,t0+DT);
+      zsXs+=DT/6*(a1+2*a2+2*a3+a4);
+      zsVs+=DT/6*(b1+2*b2+2*b3+b4);
+    }
+    // Zero-input: F=0, IC=x0,v0
+    {
+      const fre=(x,v)=>[v,(-bP*v-kP*x)/mP];
+      const[a1,b1]=fre(ziXs,ziVs);
+      const[a2,b2]=fre(ziXs+DT/2*a1,ziVs+DT/2*b1);
+      const[a3,b3]=fre(ziXs+DT/2*a2,ziVs+DT/2*b2);
+      const[a4,b4]=fre(ziXs+DT*a3,ziVs+DT*b3);
+      ziXs+=DT/6*(a1+2*a2+2*a3+a4);
+      ziVs+=DT/6*(b1+2*b2+2*b3+b4);
+    }
+    tsZS.push(zsXs); tsZI.push(ziXs);
+    if(tsZS.length>TSLEN){tsZS.shift();tsZI.shift();}
+  }
+
+  /* ======== Main loop ======== */
+  let fc=0;
+  (function loop(){
+    requestAnimationFrame(loop);
+    if(!paused&&speedP>0){
+      stepsAccum+=6*speedP;
+      while(stepsAccum>=1){doStep();stepsAccum--;}
+    }
+    if(++fc%3===0){drawPhase();drawXC();drawConv();drawDecomp();}
+    if(fc%6===0){drawPole();}
+    if(fc%30===0){updateBadge();}
+  })();
+
+  /* ======== Slider sync ======== */
+  function syncWnZeta(){
+    const wn=wnP, zeta=zetaP;
+    document.getElementById("swn").value=Math.min(3,Math.max(0.2,wn)).toFixed(2);
+    document.getElementById("lwn").textContent=wn.toFixed(2);
+    document.getElementById("szeta").value=Math.min(1.5,Math.max(0,zeta)).toFixed(2);
+    document.getElementById("lzeta").textContent=zeta.toFixed(2);
+    document.getElementById("lk").textContent=kP.toFixed(2);
+    document.getElementById("lb").textContent=bP.toFixed(2);
+    document.getElementById("lm").textContent=mP.toFixed(2);
+  }
+
+  /* ======== Slider handlers ======== */
+  document.getElementById("sm").oninput=function(){
+    mP=+this.value; document.getElementById("lm").textContent=mP.toFixed(2);
+    computeIC(); syncWnZeta(); reset(); updateBadge();
+  };
+  document.getElementById("sb").oninput=function(){
+    bP=+this.value; document.getElementById("lb").textContent=bP.toFixed(2);
+    computeIC(); syncWnZeta(); reset(); updateBadge();
+  };
+  document.getElementById("sk").oninput=function(){
+    kP=+this.value; document.getElementById("lk").textContent=kP.toFixed(2);
+    computeIC(); syncWnZeta(); reset(); updateBadge();
+  };
+  document.getElementById("swn").oninput=function(){
+    const wn_new=+this.value;
+    kP=mP*wn_new*wn_new;
+    document.getElementById("sk").value=Math.min(6,Math.max(0.05,kP)).toFixed(2);
+    computeIC(); syncWnZeta(); reset(); updateBadge();
+  };
+  document.getElementById("szeta").oninput=function(){
+    const zeta_new=+this.value;
+    bP=2*zeta_new*Math.sqrt(kP*mP);
+    document.getElementById("sb").value=Math.min(4,Math.max(0,bP)).toFixed(2);
+    computeIC(); syncWnZeta(); reset(); updateBadge();
+  };
+  document.getElementById("sw").oninput=function(){
+    wP=+this.value; document.getElementById("lw").textContent=wP.toFixed(2);
+    computeIC(); reset(); updateBadge();
+  };
+  document.getElementById("sf").oninput=function(){
+    f0P=+this.value; document.getElementById("lf").textContent=f0P.toFixed(2);
+    computeIC(); reset(); updateBadge();
+  };
+  document.getElementById("sx0").oninput=function(){
+    x0P=+this.value; document.getElementById("lx0").textContent=x0P.toFixed(2);
+    reset();
+  };
+  document.getElementById("sv0").oninput=function(){
+    v0P=+this.value; document.getElementById("lv0").textContent=v0P.toFixed(2);
+    reset();
+  };
+  document.getElementById("sspd").oninput=function(){
+    speedP=+this.value;
+    document.getElementById("lspd").textContent=speedP===0?"0x (\u6682\u505C)":speedP.toFixed(2)+"x";
+  };
+  document.getElementById("syr").oninput=function(){
+    yR=+this.value; document.getElementById("lyr").textContent="\u00B1"+yR.toFixed(1);
+  };
+  document.getElementById("spoleR").oninput=function(){
+    poleScaleR=+this.value; document.getElementById("lpoleR").textContent="\u00B1"+poleScaleR.toFixed(1);
+  };
+
+  /* ======== Button handlers ======== */
+  document.getElementById("btnPause").onclick=function(){
+    paused=!paused;
+    this.textContent=paused?"\u25B6 \u7EE7\u7EED":"\u23F8 \u6682\u505C";
+  };
+  document.getElementById("btnReset").onclick=function(){reset();updateBadge();};
+  document.getElementById("btnDark").onclick=function(){
+    dk=!dk; applyTheme();
+    this.textContent=dk?"\u2600 \u4EAE\u8272":"\u263E \u6697\u8272";
+  };
+
+  /* ======== Pole diagram drag ======== */
+  const spcEl=document.getElementById("spc");
+
+  function getLogicalCoords(e){
+    const rect=spcEl.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)*SZPC/rect.width;
+    const my=(e.clientY-rect.top)*SZPC/rect.height;
+    return[mx,my];
+  }
+  function nearPole(mx,my){
+    if(!poleT.scl) return false;
+    const polX=poleT.ox+(-sigP)*poleT.scl;
+    const polYup=poleT.oy-wd*poleT.scl;
+    const polYdn=poleT.oy+wd*poleT.scl;
+    const hitR=SZPC*0.025;
+    return Math.sqrt((mx-polX)**2+(my-polYup)**2)<hitR
+        || Math.sqrt((mx-polX)**2+(my-polYdn)**2)<hitR;
+  }
+  function nearInputPole(mx,my){
+    if(!poleT.scl||f0P<1e-9) return false;
+    const sfx=poleT.ox+0*poleT.scl; // sigma_f=0
+    const sfy_up=poleT.oy-wP*poleT.scl;
+    const sfy_dn=poleT.oy+wP*poleT.scl;
+    const hitR=SZPC*0.03;
+    return Math.sqrt((mx-sfx)**2+(my-sfy_up)**2)<hitR
+        || Math.sqrt((mx-sfx)**2+(my-sfy_dn)**2)<hitR;
+  }
+
+  spcEl.addEventListener("mousedown",function(e){
+    if(e.button!==0) return;
+    const[mx,my]=getLogicalCoords(e);
+    if(nearInputPole(mx,my)){inputDrag=true;e.preventDefault();}
+    else if(nearPole(mx,my)){poleDrag=true;e.preventDefault();}
+  });
+  spcEl.addEventListener("mousemove",function(e){
+    if(poleDrag||inputDrag) return;
+    const[mx,my]=getLogicalCoords(e);
+    spcEl.style.cursor=(nearInputPole(mx,my)||nearPole(mx,my))?'grab':'default';
+  });
+  window.addEventListener("mousemove",function(e){
+    if(!poleDrag&&!inputDrag) return;
+    const[mx,my]=getLogicalCoords(e);
+    spcEl.style.cursor='grabbing';
+    if(inputDrag){
+      const sf_im=-(my-poleT.oy)/poleT.scl;
+      wP=Math.max(0.05,Math.min(3.0,sf_im));
+      document.getElementById("sw").value=wP.toFixed(2);
+      document.getElementById("lw").textContent=wP.toFixed(2);
+      computeIC(); reset(); updateBadge();
+      return;
+    }
+    const sigma_drag=(mx-poleT.ox)/poleT.scl;
+    const omgd_drag=-(my-poleT.oy)/poleT.scl;
+    const sigma_c=Math.min(0,sigma_drag);
+    const omgd_c=Math.max(0,omgd_drag);
+    const wn_new=Math.sqrt(sigma_c*sigma_c+omgd_c*omgd_c);
+    if(wn_new<0.05) return;
+    const b_new=-2*sigma_c*mP;
+    const k_new=mP*wn_new*wn_new;
+    bP=Math.min(4,Math.max(0,b_new));
+    kP=Math.min(6,Math.max(0.05,k_new));
+    document.getElementById("sb").value=bP.toFixed(2);
+    document.getElementById("sk").value=kP.toFixed(2);
+    computeIC(); syncWnZeta(); reset(); updateBadge();
+  });
+  window.addEventListener("mouseup",function(){poleDrag=false;inputDrag=false;spcEl.style.cursor='default';});
+
+  // Touch support
+  spcEl.addEventListener("touchstart",function(e){
+    const t=e.touches[0];
+    const rect=spcEl.getBoundingClientRect();
+    const mx=(t.clientX-rect.left)*SZPC/rect.width;
+    const my=(t.clientY-rect.top)*SZPC/rect.height;
+    if(nearInputPole(mx,my)){inputDrag=true;e.preventDefault();}
+    else if(nearPole(mx,my)){poleDrag=true;e.preventDefault();}
+  },{passive:false});
+  window.addEventListener("touchmove",function(e){
+    if(!poleDrag&&!inputDrag) return;
+    const t=e.touches[0];
+    const rect=spcEl.getBoundingClientRect();
+    const mx=(t.clientX-rect.left)*SZPC/rect.width;
+    const my=(t.clientY-rect.top)*SZPC/rect.height;
+    if(inputDrag){
+      const sf_im=-(my-poleT.oy)/poleT.scl;
+      wP=Math.max(0.05,Math.min(3.0,sf_im));
+      document.getElementById("sw").value=wP.toFixed(2);
+      document.getElementById("lw").textContent=wP.toFixed(2);
+      computeIC(); reset(); updateBadge();
+      e.preventDefault(); return;
+    }
+    const sigma_drag=(mx-poleT.ox)/poleT.scl;
+    const omgd_drag=-(my-poleT.oy)/poleT.scl;
+    const sigma_c=Math.min(0,sigma_drag);
+    const omgd_c=Math.max(0,omgd_drag);
+    const wn_new=Math.sqrt(sigma_c*sigma_c+omgd_c*omgd_c);
+    if(wn_new<0.05) return;
+    bP=Math.min(4,Math.max(0,-2*sigma_c*mP));
+    kP=Math.min(6,Math.max(0.05,mP*wn_new*wn_new));
+    document.getElementById("sb").value=bP.toFixed(2);
+    document.getElementById("sk").value=kP.toFixed(2);
+    computeIC(); syncWnZeta(); reset(); updateBadge();
+    e.preventDefault();
+  },{passive:false});
+  window.addEventListener("touchend",function(){poleDrag=false;inputDrag=false;});
+
+  /* ======== postMessage listener for upper-computer ======== */
+  window.addEventListener("message",function(e){
+    const d=e.data;
+    if(!d||!d.type) return;
+    switch(d.type){
+      case 'set-param':
+        switch(d.key){
+          case 'm': mP=d.value; document.getElementById("sm").value=mP; break;
+          case 'b': bP=d.value; document.getElementById("sb").value=bP; break;
+          case 'k': kP=d.value; document.getElementById("sk").value=kP; break;
+          case 'omega': wP=d.value; document.getElementById("sw").value=wP; break;
+          case 'F0': f0P=d.value; document.getElementById("sf").value=f0P; break;
+          case 'x0': x0P=d.value; document.getElementById("sx0").value=x0P; break;
+          case 'v0': v0P=d.value; document.getElementById("sv0").value=v0P; break;
+          default: return;
+        }
+        computeIC(); syncWnZeta(); reset(); updateBadge();
+        break;
+      case 'feed-data':
+        // Inject real-time data point: {x, v, t}
+        if(d.payload&&typeof d.payload.x==='number'){
+          sx=d.payload.x; sv=d.payload.v||0; st=d.payload.t||st;
+          trX.push(sx); trV.push(sv);
+          if(trX.length>TRAIL){trX.shift();trV.shift();}
+          tsX.push(sx);
+          if(tsX.length>TSLEN) tsX.shift();
+        }
+        break;
+      case 'pause':
+        paused=true;
+        document.getElementById("btnPause").textContent="\u25B6 \u7EE7\u7EED";
+        break;
+      case 'resume':
+        paused=false;
+        document.getElementById("btnPause").textContent="\u23F8 \u6682\u505C";
+        break;
+      case 'reset':
+        reset(); updateBadge();
+        break;
+    }
+  });
+
+  // Active status report
+  function reportStatus(){
+    if(window.parent!==window){
+      window.parent.postMessage({
+        type:'sim-status',
+        payload:{
+          t:st, x:sx, v:sv,
+          wn:wnP, zeta:zetaP, wd:wd, sigma:sigP,
+          m:mP, b:bP, k:kP, omega:wP, F0:f0P,
+          paused:paused,
+          x_zi:ziXs, x_zs:zsXs,
+          verification_error:Math.abs(ziXs+zsXs-sx)
+        }
+      },'*');
+    }
+  }
+  setInterval(reportStatus,500);
+
+  /* ======== INIT ======== */
+  reset(); updateBadge(); syncWnZeta();
+})();
+</script>
+</body>
+</html>

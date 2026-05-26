@@ -1,0 +1,26 @@
+{
+  "name": "motor-learning-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "highlight.js": "^11.9.0",
+    "katex": "^0.16.9",
+    "markdown-it": "^14.0.0",
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^13.0.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "jsdom": "^29.1.1",
+    "typescript": "~5.4.0",
+    "vite": "^5.0.0",
+    "vue-tsc": "^2.0.0"
+  }
+}

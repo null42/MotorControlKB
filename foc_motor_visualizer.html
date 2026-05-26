@@ -1,0 +1,1792 @@
+      
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FOC 电机可视化（阶段1）— 控制全景 + Park/Clarke 教学</title>
+<style>
+:root{
+  --bg:#ffffff;--bg2:#f5f5f4;--bg3:#ebebe8;--tx:#1e1e1c;--tx2:#6b6a64;--tx3:#9a9994;
+  --bd:rgba(128,128,128,.22);
+  --acc:#2563eb;--acc2:#7c3aed;
+  --red:#d73a4a;--green:#16a34a;--orange:#ea580c;--blue:#2563eb;--purple:#7c3aed;--teal:#0d9488;--gold:#ca8a04;
+  --mono:Consolas,Monaco,"Courier New",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+body.dark{
+  --bg:#1a1a18;--bg2:#272724;--bg3:#33332f;--tx:#f3f3f1;--tx2:#a3a29a;--tx3:#6e6d67;
+  --bd:rgba(180,180,180,.16);
+  --red:#f87171;--green:#4ade80;--orange:#fb923c;--blue:#60a5fa;--purple:#a78bfa;--teal:#2dd4bf;--gold:#facc15;
+}
+*{box-sizing:border-box;}
+body{font-family:var(--sans);background:var(--bg);color:var(--tx);margin:0;padding:8px 12px;line-height:1.45;font-size:13px;}
+.layout{display:flex;gap:14px;align-items:flex-start;}
+.sidebar{width:430px;min-width:380px;flex-shrink:0;position:sticky;top:8px;
+         max-height:calc(100vh - 16px);overflow-y:auto;padding-right:4px;}
+.sidebar::-webkit-scrollbar{width:8px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--bd);border-radius:4px;}
+.main{flex:1;min-width:0;}
+h2{font-size:15px;font-weight:700;margin:0 0 6px;line-height:1.25;}
+h2 small{font-weight:500;color:var(--tx2);font-size:11px;}
+.topbar{display:flex;gap:6px;align-items:center;margin:6px 0 10px;flex-wrap:wrap;}
+.topbar button,.topbar select{font-family:var(--sans);font-size:12px;padding:4px 10px;
+  background:var(--bg2);color:var(--tx);border:1px solid var(--bd);border-radius:5px;cursor:pointer;}
+.topbar button:hover{background:var(--bg3);}
+.topbar .sp{flex:1;}
+.tabs{display:flex;gap:4px;margin-bottom:10px;border-bottom:1px solid var(--bd);}
+.tab{font-family:var(--sans);font-size:12px;padding:6px 12px;background:transparent;color:var(--tx2);
+     border:none;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-1px;}
+.tab.active{color:var(--tx);border-bottom-color:var(--acc);font-weight:600;}
+.tab:disabled{color:var(--tx3);cursor:not-allowed;}
+.panel{display:none;}
+.panel.active{display:block;}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;}
+.vec-wrap{flex-shrink:0;}
+.vec-wrap canvas{display:block;border-radius:8px;background:var(--bg);border:1px solid var(--bd);}
+.vec-cap{font-size:11px;color:var(--tx2);text-align:center;margin-top:3px;}
+.ts-wrap{flex:1;min-width:420px;}
+.ts-wrap canvas{width:100%;display:block;border-radius:8px;background:var(--bg);border:1px solid var(--bd);}
+
+/* Sidebar controls */
+.fbox{font-size:11px;font-family:var(--mono);color:var(--tx2);
+      margin:6px 0;padding:6px 9px;background:var(--bg2);border-radius:6px;line-height:1.6;}
+.fbox b{color:var(--tx);}
+.brow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;font-size:11px;color:var(--tx2);}
+#badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500;display:inline-block;background:var(--bg2);}
+#badge.run{background:#dcfce7;color:#15803d;}
+body.dark #badge.run{background:#14532d;color:#86efac;}
+#badge.pause{background:#fee2e2;color:#b91c1c;}
+body.dark #badge.pause{background:#7f1d1d;color:#fca5a5;}
+
+details{margin:6px 0;}
+summary{cursor:pointer;font-size:12px;font-weight:600;padding:6px 10px;
+        background:var(--bg2);border-radius:6px;list-style:none;user-select:none;color:var(--tx);}
+summary::-webkit-details-marker{display:none;}
+summary::before{content:"▶ ";font-size:9px;}
+details[open] summary::before{content:"▼ ";}
+.dc{padding:8px 4px 4px;font-size:11px;color:var(--tx2);}
+
+.ci{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--tx2);margin:3px 0;}
+.ci .lb{min-width:62px;font-family:var(--mono);color:var(--tx);font-size:11px;}
+.ci .un{min-width:30px;color:var(--tx3);font-size:10px;}
+.ci input[type=range]{flex:1;min-width:50px;}
+.ci input[type=number]{width:64px;padding:2px 4px;background:var(--bg);color:var(--tx);
+  border:1px solid var(--bd);border-radius:4px;font-family:var(--mono);font-size:11px;text-align:right;}
+.ci select{padding:2px 4px;background:var(--bg);color:var(--tx);
+  border:1px solid var(--bd);border-radius:4px;font-size:11px;}
+
+input[type=range]{-webkit-appearance:none;height:4px;background:var(--bd);border-radius:2px;outline:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+  background:var(--acc);border-radius:50%;cursor:pointer;}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;background:var(--acc);
+  border-radius:50%;cursor:pointer;border:none;}
+
+.eq-panel{font-family:var(--mono);font-size:10.5px;line-height:1.65;
+  background:var(--bg2);border-radius:6px;padding:8px 10px;margin:6px 0;}
+.eq-form{margin:3px 0;padding:3px 5px;border-radius:4px;background:rgba(128,128,128,0.05);}
+.eq-tag{font-family:var(--sans);font-size:9.5px;font-weight:700;color:var(--tx2);
+  display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em;}
+.eq-main{font-size:11px;color:var(--tx);}
+.ep{font-weight:700;color:var(--acc);}
+.ep.r{color:var(--red);} .ep.g{color:var(--green);} .ep.o{color:var(--orange);}
+.ep.p{color:var(--purple);} .ep.t{color:var(--teal);}
+
+.mts{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0;font-size:11px;}
+.mi{padding:4px 7px;background:var(--bg2);border-radius:4px;font-family:var(--mono);}
+.mi .ml{color:var(--tx2);font-size:10px;display:block;}
+.mi .mv{color:var(--tx);font-weight:600;}
+
+.btnrow{display:flex;gap:4px;flex-wrap:wrap;margin:4px 0;}
+.btnrow button{font-size:11px;padding:3px 8px;background:var(--bg);color:var(--tx);
+  border:1px solid var(--bd);border-radius:4px;cursor:pointer;font-family:var(--sans);}
+.btnrow button:hover{background:var(--bg2);}
+.btnrow button.on{background:var(--acc);color:#fff;border-color:var(--acc);}
+
+.leg{display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:var(--tx2);margin:2px 0 4px;}
+.leg span{display:inline-flex;align-items:center;gap:4px;}
+.leg i{display:inline-block;width:14px;height:2px;background:currentColor;}
+.leg i.dash{background:repeating-linear-gradient(to right,currentColor 0,currentColor 3px,transparent 3px,transparent 6px);height:2px;}
+
+.three-stack{flex:1;min-width:420px;display:flex;flex-direction:column;gap:6px;}
+.three-stack canvas{width:100%;display:block;border-radius:6px;background:var(--bg);border:1px solid var(--bd);}
+.three-stack .cap{font-size:11px;color:var(--tx2);margin-bottom:-2px;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ============= SIDEBAR ============= -->
+<aside class="sidebar">
+<h2>FOC 电机可视化 <small>v1 · 阶段1</small></h2>
+
+<div class="brow">
+  <span id="badge" class="run">运行中</span>
+  <span id="itxt">t = 0.000 s</span>
+</div>
+
+<div class="topbar">
+  <button id="btn_play">⏸ 暂停</button>
+  <button id="btn_reset">⏮ 重置</button>
+  <select id="sel_speed" title="仿真速率">
+    <option value="0.25">0.25×</option>
+    <option value="0.5">0.5×</option>
+    <option value="1" selected>1×</option>
+    <option value="2">2×</option>
+    <option value="4">4×</option>
+  </select>
+  <button id="btn_theme" title="切换主题">🌓</button>
+  <span class="sp"></span>
+</div>
+
+<div class="fbox">
+  PMSM dq 模型：<br>
+  <b>L_d·di_d/dt = u_d − R_s·i_d + ω_e·L_q·i_q</b><br>
+  <b>L_q·di_q/dt = u_q − R_s·i_q − ω_e·L_d·i_d − ω_e·ψ_f</b><br>
+  <b>T_e = 1.5·P_n·[ψ_f·i_q + (L_d−L_q)·i_d·i_q]</b><br>
+  <b>J·dω_m/dt = T_e − T_L − B·ω_m</b><br>
+  ω_e = P_n·ω_m, θ_e = ∫ω_e dt
+</div>
+
+<div class="mts" id="metrics">
+  <div class="mi"><span class="ml">ω_m / ω*</span><span class="mv" id="m_wm">0 / 0 rad/s</span></div>
+  <div class="mi"><span class="ml">i_d / i_d*</span><span class="mv" id="m_id">0 / 0 A</span></div>
+  <div class="mi"><span class="ml">i_q / i_q*</span><span class="mv" id="m_iq">0 / 0 A</span></div>
+  <div class="mi"><span class="ml">T_e</span><span class="mv" id="m_te">0 N·m</span></div>
+  <div class="mi"><span class="ml">|V_s| / V_max</span><span class="mv" id="m_vs">0 / 0 V</span></div>
+  <div class="mi"><span class="ml">扇区</span><span class="mv" id="m_sec">1</span></div>
+</div>
+
+<!-- ===== 电机参数 ===== -->
+<details open>
+<summary>① 电机参数</summary>
+<div class="dc">
+  <div class="ci"><span class="lb">R_s</span><input type="range" id="r_Rs" min="0.001" max="50" step="0.001" value="0.5"><input type="number" id="n_Rs" min="0.001" max="50" step="0.001" value="0.5"><span class="un">Ω</span></div>
+  <div class="ci"><span class="lb">L_d</span><input type="range" id="r_Ld" min="0.05" max="200" step="0.05" value="5"><input type="number" id="n_Ld" min="0.05" max="200" step="0.05" value="5"><span class="un">mH</span></div>
+  <div class="ci"><span class="lb">L_q</span><input type="range" id="r_Lq" min="0.05" max="200" step="0.05" value="5"><input type="number" id="n_Lq" min="0.05" max="200" step="0.05" value="5"><span class="un">mH</span></div>
+  <div class="ci"><span class="lb">ψ_f</span><input type="range" id="r_psif" min="0.01" max="3" step="0.01" value="0.1"><input type="number" id="n_psif" min="0.01" max="3" step="0.01" value="0.1"><span class="un">Wb</span></div>
+  <div class="ci"><span class="lb">J</span><input type="range" id="r_J" min="0.00001" max="1" step="0.00001" value="0.001"><input type="number" id="n_J" min="0.00001" max="1" step="0.00001" value="0.001"><span class="un">kg·m²</span></div>
+  <div class="ci"><span class="lb">B</span><input type="range" id="r_B" min="0" max="0.5" step="0.001" value="0.0001"><input type="number" id="n_B" min="0" max="0.5" step="0.001" value="0.0001"><span class="un">N·m·s</span></div>
+  <div class="ci"><span class="lb">P_n</span><input type="range" id="r_Pn" min="1" max="20" step="1" value="4"><input type="number" id="n_Pn" min="1" max="20" step="1" value="4"><span class="un">极对</span></div>
+  <div class="ci"><span class="lb">T_L</span><input type="range" id="r_TL" min="-50" max="50" step="0.5" value="0"><input type="number" id="n_TL" min="-50" max="50" step="0.5" value="0"><span class="un">N·m</span></div>
+  <div class="btnrow" style="margin-top:6px;">
+    <button id="b_pulseTL" title="施加阶跃负载 0.5 N·m 持续 1 秒">⚡ 阶跃负载</button>
+    <button id="b_sinTL" title="施加正弦负载扰动">∿ 正弦扰动</button>
+  </div>
+</div>
+</details>
+
+<!-- ===== 控制器 ===== -->
+<details open>
+<summary>② 控制器（串级 PI）</summary>
+<div class="dc">
+  <div class="ci"><span class="lb">ω* 给定</span><input type="range" id="r_wRef" min="-2100" max="2100" step="10" value="50"><input type="number" id="n_wRef" min="-2100" max="2100" step="10" value="50"><span class="un">rad/s</span></div>
+  <div class="ci"><span class="lb">i_d* 给定</span><input type="range" id="r_idRef" min="-50" max="50" step="0.5" value="0"><input type="number" id="n_idRef" min="-50" max="50" step="0.5" value="0"><span class="un">A</span></div>
+  <div class="ci"><span class="lb">K_p (电流)</span><input type="range" id="r_Kpi" min="0.1" max="2000" step="0.5" value="15"><input type="number" id="n_Kpi" min="0.1" max="2000" step="0.5" value="15"><span class="un">V/A</span></div>
+  <div class="ci"><span class="lb">K_i (电流)</span><input type="range" id="r_Kii" min="10" max="200000" step="100" value="1500"><input type="number" id="n_Kii" min="10" max="200000" step="100" value="1500"><span class="un">V/A·s</span></div>
+  <div class="ci"><span class="lb">K_p (速度)</span><input type="range" id="r_Kpw" min="0.001" max="50" step="0.001" value="0.08"><input type="number" id="n_Kpw" min="0.001" max="50" step="0.001" value="0.08"><span class="un">A·s/rad</span></div>
+  <div class="ci"><span class="lb">K_i (速度)</span><input type="range" id="r_Kiw" min="0.01" max="1000" step="0.1" value="2"><input type="number" id="n_Kiw" min="0.01" max="1000" step="0.1" value="2"><span class="un">A/rad</span></div>
+  <div class="ci"><span class="lb">i_q 限幅</span><input type="range" id="r_iqMax" min="1" max="200" step="1" value="10"><input type="number" id="n_iqMax" min="1" max="200" step="1" value="10"><span class="un">A</span></div>
+  <div class="btnrow" style="margin-top:6px;">
+    <button id="b_autoCur" title="按带宽 ωc=2π·500 Hz 整定电流 PI">⚙ 自整定 电流环</button>
+    <button id="b_decouple" id_=decouple title="加入 ω·L·i 解耦前馈">解耦：关</button>
+  </div>
+</div>
+</details>
+
+<!-- ===== 调制 / 仿真 ===== -->
+<details>
+<summary>③ 调制 / 直流母线 / 噪声</summary>
+<div class="dc">
+  <div class="ci"><span class="lb">V_dc</span><input type="range" id="r_Vdc" min="6" max="400" step="1" value="48"><input type="number" id="n_Vdc" min="6" max="400" step="1" value="48"><span class="un">V</span></div>
+  <div class="ci"><span class="lb">f_s 控制</span><select id="sel_fs"><option value="5000">5 kHz</option><option value="10000" selected>10 kHz</option><option value="20000">20 kHz</option></select></div>
+  <div class="ci"><span class="lb">调制</span><select id="sel_mod"><option value="SVPWM" selected>SVPWM (V_max=V_dc/√3)</option><option value="SPWM">SPWM (V_max=V_dc/2)</option></select></div>
+  <div class="ci"><span class="lb">采样噪声</span><input type="range" id="r_noise" min="0" max="0.5" step="0.005" value="0"><input type="number" id="n_noise" min="0" max="0.5" step="0.005" value="0"><span class="un">A_rms</span></div>
+</div>
+</details>
+
+<!-- ===== 观测器（Tab2 用） ===== -->
+<details>
+<summary>④ 无感观测器（Tab 2）</summary>
+<div class="dc">
+  <div class="ci"><span class="lb">观测器</span>
+    <select id="sel_obs">
+      <option value="NONE" selected>关闭（有感参考）</option>
+      <option value="SMO">SMO 滑模</option>
+      <option value="LUE">Luenberger 龙伯格</option>
+    </select>
+  </div>
+  <div class="ci"><span class="lb">SMO k</span><input type="range" id="r_kSmo" min="50" max="50000" step="50" value="400"><input type="number" id="n_kSmo" min="50" max="50000" step="50" value="400"><span class="un">V/A</span></div>
+  <div class="ci"><span class="lb">SMO 边界δ</span><input type="range" id="r_dSmo" min="0.01" max="20" step="0.1" value="0.2"><input type="number" id="n_dSmo" min="0.01" max="20" step="0.1" value="0.2"><span class="un">A</span></div>
+  <div class="ci"><span class="lb">SMO LPF</span><input type="range" id="r_fLpf" min="10" max="8000" step="10" value="200"><input type="number" id="n_fLpf" min="10" max="8000" step="10" value="200"><span class="un">Hz</span></div>
+  <div class="ci"><span class="lb">Lue ω_o</span><input type="range" id="r_woLue" min="50" max="50000" step="50" value="500"><input type="number" id="n_woLue" min="50" max="50000" step="50" value="500"><span class="un">rad/s</span></div>
+  <div class="ci"><span class="lb">闭环源</span>
+    <select id="sel_fb">
+      <option value="REAL" selected>用真实角(诊断观测器)</option>
+      <option value="OBS">用观测角(真无感闭环)</option>
+    </select>
+  </div>
+  <div class="btnrow" style="margin-top:6px;">
+    <button id="b_autoObs" title="根据当前电机参数和转速自动整定观测器">⚙ 观测器自整定</button>
+  </div>
+</div>
+</details>
+
+<!-- ===== 方程面板 ===== -->
+<details open>
+<summary>📐 实时方程（参数高亮）</summary>
+<div class="eq-panel">
+
+<div class="eq-form">
+  <span class="eq-tag">① 电压方程（dq）</span>
+  <span class="eq-main">u_d = <span id="e_Rs" class="ep r">0.50</span>·i_d + <span id="e_Ld" class="ep g">0.005</span>·di_d/dt − ω_e·<span id="e_Lq" class="ep o">0.005</span>·i_q</span><br>
+  <span class="eq-main">u_q = <span id="e_Rs2" class="ep r">0.50</span>·i_q + <span id="e_Lq2" class="ep o">0.005</span>·di_q/dt + ω_e·<span id="e_Ld2" class="ep g">0.005</span>·i_d + ω_e·<span id="e_psif" class="ep p">0.100</span></span>
+</div>
+
+<div class="eq-form">
+  <span class="eq-tag">② 转矩 / 机械</span>
+  <span class="eq-main">T_e = 1.5·<span id="e_Pn" class="ep t">4</span>·[<span id="e_psif2" class="ep p">0.100</span>·i_q + (<span id="e_Ld3" class="ep g">0.005</span>−<span id="e_Lq3" class="ep o">0.005</span>)·i_d·i_q]</span><br>
+  <span class="eq-main"><span id="e_J" class="ep">0.001</span>·dω_m/dt = T_e − <span id="e_TL" class="ep">0.00</span> − <span id="e_B" class="ep">1e-4</span>·ω_m</span>
+</div>
+
+<div class="eq-form">
+  <span class="eq-tag">③ 控制器（电流环传函）</span>
+  <span class="eq-main">G_pi(s) = <span id="e_Kpi" class="ep">15</span> + <span id="e_Kii" class="ep">1500</span>/s</span><br>
+  <span class="eq-main">带宽估计 ω_c ≈ K_p/L ≈ <span id="e_bw">3000</span> rad/s (<span id="e_bwhz">477</span> Hz)</span>
+</div>
+
+<div class="eq-form">
+  <span class="eq-tag">④ Clarke / Park 变换</span>
+  <span class="eq-main">i_α = i_a, &nbsp;i_β = (i_b − i_c)/√3</span><br>
+  <span class="eq-main">i_d = i_α·cos(θ_e) + i_β·sin(θ_e)</span><br>
+  <span class="eq-main">i_q = −i_α·sin(θ_e) + i_β·cos(θ_e)</span>
+</div>
+
+</div>
+</details>
+
+<details>
+<summary>📖 使用说明</summary>
+<div class="dc" style="line-height:1.7;">
+• <b>滑块/输入框</b>双向绑定，任意改一边都生效。<br>
+• <b>Tab 1 控制全景</b>：左 αβ 矢量与 SVPWM 扇区，右 dq 坐标，下方时域曲线。<br>
+• <b>Tab 4 Park/Clarke</b>：从三相 → αβ → dq 的三层联动。<br>
+• <b>Tab 2</b>无感观测器 SMO / Luenberger 对比 + 极点图。<br>
+• <b>Tab 3</b>频域分析 FFT / Bode / 灵敏度。<br>
+• 默认电机：Vdc=48V 小功率 PMSM，可达 ~70 rad/s 机械转速。<br>
+• 若曲线发散，多半是 PI 太大或采样率太低，点 <b>⚙ 自整定</b>。
+</div>
+</details>
+
+</aside>
+
+<!-- ============= MAIN ============= -->
+<main class="main">
+
+<nav class="tabs">
+  <button class="tab active" data-tab="1">🎛 控制全景</button>
+  <button class="tab" data-tab="4">📚 Park/Clarke 教学</button>
+  <button class="tab" data-tab="2">🛰 观测器对比</button>
+  <button class="tab" data-tab="3">📈 频域分析</button>
+</nav>
+
+<!-- ===== TAB 1 ===== -->
+<section class="panel active" id="panel1">
+
+<div class="row">
+  <div class="vec-wrap">
+    <canvas id="cv_ab" width="360" height="360" style="width:360px;height:360px;"></canvas>
+    <div class="vec-cap">αβ 静止坐标 · SVPWM 扇区</div>
+    <div class="leg" style="justify-content:center;">
+      <span style="color:var(--blue)"><i></i>V_s 电压矢量</span>
+      <span style="color:var(--orange)"><i></i>I_s 电流矢量</span>
+      <span style="color:var(--purple)"><i class="dash"></i>调制极限圆</span>
+    </div>
+  </div>
+  <div class="vec-wrap">
+    <canvas id="cv_dq" width="360" height="360" style="width:360px;height:360px;"></canvas>
+    <div class="vec-cap">dq 旋转坐标 · 工作点轨迹</div>
+    <div class="leg" style="justify-content:center;">
+      <span style="color:var(--green)"><i></i>(i_d,i_q) 当前</span>
+      <span style="color:var(--red)"><i class="dash"></i>参考点</span>
+      <span style="color:var(--tx2)"><i></i>轨迹尾</span>
+    </div>
+  </div>
+</div>
+
+<div class="ts-wrap" style="margin-top:10px;">
+  <div class="leg" style="margin-left:6px;">
+    <span style="color:var(--blue)"><i class="dash"></i>ω*</span>
+    <span style="color:var(--blue)"><i></i>ω_m</span>
+    <span style="color:var(--green)"><i class="dash"></i>i_d*</span>
+    <span style="color:var(--green)"><i></i>i_d</span>
+    <span style="color:var(--orange)"><i class="dash"></i>i_q*</span>
+    <span style="color:var(--orange)"><i></i>i_q</span>
+    <span style="color:var(--purple)"><i></i>T_e</span>
+    <span style="color:var(--tx2)"><i></i>T_L</span>
+  </div>
+  <canvas id="cv_ts" height="420" style="height:420px;"></canvas>
+</div>
+
+</section>
+
+<!-- ===== TAB 4 ===== -->
+<section class="panel" id="panel4">
+
+<div class="row">
+  <div class="vec-wrap">
+    <canvas id="cv_pha" width="380" height="380" style="width:380px;height:380px;"></canvas>
+    <div class="vec-cap">三相相量 → αβ 合成 → dq 旋转</div>
+    <div class="leg" style="justify-content:center;">
+      <span style="color:var(--red)"><i></i>i_a</span>
+      <span style="color:var(--green)"><i></i>i_b</span>
+      <span style="color:var(--blue)"><i></i>i_c</span>
+      <span style="color:var(--orange)"><i></i>I_s (αβ)</span>
+      <span style="color:var(--purple)"><i class="dash"></i>dq 轴(随θ_e转)</span>
+    </div>
+  </div>
+  <div class="three-stack">
+    <div class="cap">三相定子电流 i_a, i_b, i_c</div>
+    <canvas id="cv_3ph" height="160" style="height:160px;"></canvas>
+    <div class="cap">Clarke 变换 → i_α, i_β（静止坐标，幅值不变）</div>
+    <canvas id="cv_clk" height="160" style="height:160px;"></canvas>
+    <div class="cap">Park 变换 → i_d, i_q（旋转坐标，稳态为直流）</div>
+    <canvas id="cv_prk" height="160" style="height:160px;"></canvas>
+  </div>
+</div>
+
+<div class="fbox" style="margin-top:12px;">
+  <b>关键观察</b>：三相电流是 120° 相差的正弦量；Clarke 变换把它们投影到正交 αβ 轴（仍是正弦但只剩两路）；
+  Park 变换跟随转子角 θ_e 一起转，于是稳态电流在 dq 系下就是<b>直流</b>，这正是 FOC 能用 PI 控正弦电流的根本原因。
+</div>
+
+</section>
+
+<!-- ===== TAB 2 ===== -->
+<section class="panel" id="panel2">
+
+<div class="row">
+  <div class="vec-wrap">
+    <canvas id="cv_emf" width="360" height="360" style="width:360px;height:360px;"></canvas>
+    <div class="vec-cap">估计反电势 ê_α/ê_β 相图 vs 真值</div>
+    <div class="leg" style="justify-content:center;">
+      <span style="color:var(--blue)"><i></i>真值 e_αβ</span>
+      <span style="color:var(--orange)"><i></i>估计 ê_αβ</span>
+    </div>
+  </div>
+  <div class="vec-wrap">
+    <canvas id="cv_pole" width="360" height="360" style="width:360px;height:360px;"></canvas>
+    <div class="vec-cap">特征极点（电流环 + 观测器）</div>
+    <div class="leg" style="justify-content:center;">
+      <span style="color:var(--green)"><i></i>电流环闭环极点</span>
+      <span style="color:var(--red)"><i></i>观测器极点</span>
+      <span style="color:var(--tx3)"><i class="dash"></i>历史轨迹</span>
+    </div>
+  </div>
+</div>
+
+<div class="ts-wrap" style="margin-top:10px;">
+  <div class="leg" style="margin-left:6px;">
+    <span style="color:var(--blue)"><i class="dash"></i>θ_real</span>
+    <span style="color:var(--orange)"><i></i>θ_obs</span>
+    <span style="color:var(--red)"><i></i>θ̃ 误差</span>
+    <span style="color:var(--blue)"><i class="dash"></i>ω_real</span>
+    <span style="color:var(--orange)"><i></i>ω_obs</span>
+  </div>
+  <canvas id="cv_obs_ts" height="380" style="height:380px;"></canvas>
+</div>
+
+<div class="fbox" style="margin-top:8px;">
+  <b>SMO</b>: 用 sign/sat 强制电流估计跟踪实际电流，等效注入电压经低通即为反电势估计，再 atan2 得角度。<br>
+  <b>Lue</b>: 把反电势视作扩展状态，线性增益矩阵把误差衰减；极点配置由 ω_o 控制收敛速度。<br>
+  <b>闭环源</b>切到「用观测角」即为真正无感闭环——观测器若不稳定整个系统就崩。
+</div>
+
+</section>
+
+<!-- ===== TAB 3 ===== -->
+<section class="panel" id="panel3">
+
+<div class="row">
+  <div class="ts-wrap">
+    <div class="cap" style="font-size:11px;color:var(--tx2);margin-bottom:2px;">i_q FFT 频谱（实时滚动，1024 点 Hann 窗）</div>
+    <canvas id="cv_fft" height="200" style="height:200px;"></canvas>
+  </div>
+</div>
+
+<div class="row" style="margin-top:8px;">
+  <div class="ts-wrap">
+    <div class="cap" style="font-size:11px;color:var(--tx2);margin-bottom:2px;">电流环开环 Bode：L(s)=G_PI(s)·1/(L·s+R) — 自动标注剪切频率与相位裕度</div>
+    <canvas id="cv_bode" height="320" style="height:320px;"></canvas>
+  </div>
+</div>
+
+<div class="row" style="margin-top:8px;">
+  <div class="ts-wrap">
+    <div class="cap" style="font-size:11px;color:var(--tx2);margin-bottom:2px;">灵敏度 |S(jω)|=|1/(1+L)| — 越低扰动抑制越好；峰值 M_s 是鲁棒性指标</div>
+    <canvas id="cv_sens" height="180" style="height:180px;"></canvas>
+  </div>
+</div>
+
+<div class="fbox" style="margin-top:8px;">
+  典型工程指标：剪切频率 <b>f_c ≈ 500 Hz</b>(电流环)；相位裕度 <b>PM ≥ 45°</b>；灵敏度峰值 <b>M_s ≤ 2 (6 dB)</b>。
+  改 K_p/K_i 实时看影响。
+</div>
+
+</section>
+
+</main>
+</div>
+
+<script>
+'use strict';
+//============================================================
+// 工具
+//============================================================
+const $ = id => document.getElementById(id);
+const PI=Math.PI, TAU=2*PI, SQ3=Math.sqrt(3), SQ3_2=SQ3/2, INV_SQ3=1/SQ3;
+const clamp=(x,a,b)=>x<a?a:x>b?b:x;
+const wrap=a=>{a%=TAU;return a<0?a+TAU:a;};
+const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
+function gaussian(){let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(TAU*v);}
+
+//============================================================
+// 状态
+//============================================================
+const S = {
+  // 电机参数（SI）
+  Rs:0.5, Ld:5e-3, Lq:5e-3, psif:0.1, J:1e-3, B:1e-4, Pn:4,
+  TL:0,                           // 外部负载
+  TL_pulse:0, TL_pulse_end:0,     // 阶跃负载
+  TL_sin:0,                       // 正弦扰动幅值
+  // 控制器
+  Kpi:15, Kii:1500, Kpw:0.08, Kiw:2, iqMax:10,
+  wRef:50, idRef:0, decouple:false,
+  // 调制
+  Vdc:48, fs:10000, mod:'SVPWM', noise:0,
+  // 模型状态
+  id:0, iq:0, wm:0, the:0,
+  // 控制器积分态
+  uid_i:0, uiq_i:0, uw_i:0,
+  // 工作量
+  ud:0, uq:0, va:0, vb:0,
+  ia:0, ib:0, ic:0,
+  iqRef:0, Te:0, sector:1,
+  // 仿真
+  t:0, running:true, speed:1, tab:1,
+  // 观测器
+  obsType:'NONE', fbSource:'REAL',
+  kSmo:400, dSmo:0.2, fLpf:200,
+  woLue:500,
+  // 观测器内部状态
+  obs_ia:0, obs_ib:0,           // SMO/Lue 电流估计
+  obs_ea:0, obs_eb:0,           // 反电势估计
+  obs_th:0, obs_w:0,            // 角度/转速估计
+  // 真实反电势（输出用）
+  ea_real:0, eb_real:0,
+};
+
+// 历史缓冲（渲染采样，60Hz）
+const HN = 900; // 15s
+const HIST = {
+  t:new Float32Array(HN), wRef:new Float32Array(HN), wm:new Float32Array(HN),
+  idRef:new Float32Array(HN), id:new Float32Array(HN),
+  iqRef:new Float32Array(HN), iq:new Float32Array(HN),
+  Te:new Float32Array(HN), TL:new Float32Array(HN),
+  ia:new Float32Array(HN), ib:new Float32Array(HN), ic:new Float32Array(HN),
+  ialpha:new Float32Array(HN), ibeta:new Float32Array(HN),
+  the:new Float32Array(HN),
+  // 观测器
+  obs_th:new Float32Array(HN), obs_w:new Float32Array(HN),
+  obs_err:new Float32Array(HN),
+  ea_r:new Float32Array(HN), eb_r:new Float32Array(HN),
+  ea_e:new Float32Array(HN), eb_e:new Float32Array(HN),
+};
+// FFT 缓冲（独立、固定采样率）
+const FFT_N = 1024;
+const FFT_BUF = new Float32Array(FFT_N);
+let FFT_IDX = 0;
+const FFT_FS = 2000; // FFT 采样率 Hz（重采样自仿真）
+let fft_acc_t = 0;
+let HIDX=0, HFILL=0;
+const dqTrail=[], abTrail=[]; const TRAIL_N=160;
+
+function resetState(){
+  S.id=S.iq=S.wm=S.the=0;
+  S.uid_i=S.uiq_i=S.uw_i=0;
+  S.t=0; HIDX=0; HFILL=0;
+  dqTrail.length=0; abTrail.length=0;
+  S.TL_pulse=0; S.TL_pulse_end=0; S.TL_sin=0;
+  S.obs_ia=S.obs_ib=S.obs_ea=S.obs_eb=S.obs_th=S.obs_w=0;
+  FFT_IDX=0; FFT_BUF.fill(0); fft_acc_t=0;
+}
+
+//============================================================
+// 观测器
+//============================================================
+function observerStep(dt, ia_m, ib_m, va, vb){
+  const L = (S.Ld + S.Lq)/2;
+  if (S.obsType === 'SMO'){
+    const sa = S.obs_ia - ia_m, sb = S.obs_ib - ib_m;
+    const sat = x => clamp(x/S.dSmo, -1, 1);
+    const za = S.kSmo*sat(sa), zb = S.kSmo*sat(sb);
+    S.obs_ia += ((va - S.Rs*S.obs_ia - za)/L)*dt;
+    S.obs_ib += ((vb - S.Rs*S.obs_ib - zb)/L)*dt;
+    const a = TAU*S.fLpf*dt/(1+TAU*S.fLpf*dt);
+    S.obs_ea += a*(za - S.obs_ea);
+    S.obs_eb += a*(zb - S.obs_eb);
+    const th = Math.atan2(-S.obs_ea, S.obs_eb);
+    let dth = th - S.obs_th;
+    while (dth > PI) dth -= TAU;
+    while (dth < -PI) dth += TAU;
+    const wmeas = dth/dt;
+    const a2 = clamp(TAU*30*dt, 0, 1);
+    S.obs_w += a2*(wmeas - S.obs_w);
+    S.obs_th = wrap(th);
+  }
+  else if (S.obsType === 'LUE'){
+    const wo = S.woLue;
+    const k1 = 2*wo, k2 = wo*wo*L;
+    const ea = S.obs_ia - ia_m, eb = S.obs_ib - ib_m;
+    const dia = (va - S.Rs*S.obs_ia - S.obs_ea)/L - k1*ea;
+    const dib = (vb - S.Rs*S.obs_ib - S.obs_eb)/L - k1*eb;
+    const dea = -S.obs_w*S.obs_eb + k2*ea;
+    const deb =  S.obs_w*S.obs_ea + k2*eb;
+    S.obs_ia += dia*dt; S.obs_ib += dib*dt;
+    S.obs_ea += dea*dt; S.obs_eb += deb*dt;
+    const th = Math.atan2(-S.obs_ea, S.obs_eb);
+    let dth = th - S.obs_th;
+    while (dth > PI) dth -= TAU;
+    while (dth < -PI) dth += TAU;
+    const wmeas = dth/dt;
+    const a = clamp(TAU*30*dt, 0, 1);
+    S.obs_w += a*(wmeas - S.obs_w);
+    S.obs_th = wrap(th);
+  }
+  // 真实反电势（显示对比）
+  const we_e = S.Pn*S.wm;
+  S.ea_real = -S.psif*we_e*Math.sin(S.the);
+  S.eb_real =  S.psif*we_e*Math.cos(S.the);
+}
+
+//============================================================
+// 仿真步进
+//============================================================
+function simStep(dt){
+  // 1. 负载合成
+  let TLtot = S.TL;
+  if (S.t < S.TL_pulse_end) TLtot += S.TL_pulse;
+  if (S.TL_sin>0) TLtot += S.TL_sin*Math.sin(TAU*2*S.t);
+
+  // 2. 真实 αβ 电流
+  const ct = Math.cos(S.the), st = Math.sin(S.the);
+  const ialpha_t = ct*S.id - st*S.iq;
+  const ibeta_t  = st*S.id + ct*S.iq;
+  // 测量（含噪声）
+  const noise = S.noise>0;
+  const ia_m = ialpha_t + (noise?gaussian()*S.noise:0);
+  const ib_m = ibeta_t  + (noise?gaussian()*S.noise:0);
+
+  // 3. 控制角度：观测器闭环则用 obs_th
+  const useObs = (S.obsType!=='NONE' && S.fbSource==='OBS');
+  const th_c = useObs ? S.obs_th : S.the;
+  const wm_c = useObs ? (S.obs_w/Math.max(1,S.Pn)) : S.wm;
+  const cc = Math.cos(th_c), sc = Math.sin(th_c);
+  const id_m = cc*ia_m + sc*ib_m;
+  const iq_m = -sc*ia_m + cc*ib_m;
+
+  // 4. 速度环
+  const we = S.wRef - wm_c;
+  let iqRefRaw = S.Kpw*we + S.uw_i;
+  let iqRef = clamp(iqRefRaw, -S.iqMax, S.iqMax);
+  const sat_w = iqRefRaw !== iqRef;
+  if (!sat_w || (we*iqRefRaw < 0)) S.uw_i += S.Kiw*we*dt;
+  S.iqRef = iqRef;
+
+  // 5. 电流环
+  const eid = S.idRef - id_m, eiq = iqRef - iq_m;
+  let udRaw = S.Kpi*eid + S.uid_i;
+  let uqRaw = S.Kpi*eiq + S.uiq_i;
+  const we_c = S.Pn*wm_c;
+  if (S.decouple){
+    udRaw += -we_c*S.Lq*iq_m;
+    uqRaw +=  we_c*(S.Ld*id_m + S.psif);
+  }
+  const Vmax = (S.mod==='SVPWM' ? S.Vdc/SQ3 : S.Vdc/2);
+  const mag = Math.hypot(udRaw, uqRaw);
+  let ud_c=udRaw, uq_c=uqRaw, sat_c=false;
+  if (mag > Vmax){ ud_c = udRaw*Vmax/mag; uq_c = uqRaw*Vmax/mag; sat_c=true; }
+  if (!sat_c || (eid*udRaw < 0)) S.uid_i += S.Kii*eid*dt;
+  if (!sat_c || (eiq*uqRaw < 0)) S.uiq_i += S.Kii*eiq*dt;
+
+  // 6. 反 Park 到 αβ
+  const va = cc*ud_c - sc*uq_c;
+  const vb = sc*ud_c + cc*uq_c;
+  S.va=va; S.vb=vb;
+  let ang = Math.atan2(vb, va); if (ang<0) ang+=TAU;
+  S.sector = Math.floor(ang/(PI/3)) + 1;
+
+  // 7. 观测器步进
+  if (S.obsType !== 'NONE') observerStep(dt, ia_m, ib_m, va, vb);
+  else { S.obs_th = S.the; S.obs_w = S.Pn*S.wm;
+         S.ea_real = -S.psif*S.Pn*S.wm*Math.sin(S.the);
+         S.eb_real =  S.psif*S.Pn*S.wm*Math.cos(S.the); }
+
+  // 8. 真实系 PMSM ODE（用真实 θ 把 αβ 转回 dq）
+  const ud_r = ct*va + st*vb;
+  const uq_r = -st*va + ct*vb;
+  S.ud=ud_r; S.uq=uq_r;
+  const we_e = S.Pn*S.wm;
+  const did = (ud_r - S.Rs*S.id + we_e*S.Lq*S.iq)/S.Ld;
+  const diq = (uq_r - S.Rs*S.iq - we_e*S.Ld*S.id - we_e*S.psif)/S.Lq;
+  S.id += did*dt; S.iq += diq*dt;
+  S.Te = 1.5*S.Pn*(S.psif*S.iq + (S.Ld-S.Lq)*S.id*S.iq);
+  S.wm += ((S.Te - TLtot - S.B*S.wm)/S.J)*dt;
+  S.the = wrap(S.the + we_e*dt);
+
+  // 9. 三相显示
+  S.ia = ialpha_t;
+  S.ib = -0.5*ialpha_t + SQ3_2*ibeta_t;
+  S.ic = -0.5*ialpha_t - SQ3_2*ibeta_t;
+
+  S.t += dt;
+}
+
+//============================================================
+// 主循环
+//============================================================
+let last=performance.now();
+function loop(now){
+  const wall = (now-last)/1000; last=now;
+  if (S.running){
+    const dt = 1/S.fs;
+    const target_t = S.t + Math.min(0.05, wall*S.speed);
+    let guard=0;
+    while (S.t < target_t && guard<5000){ simStep(dt); guard++; }
+    // 历史采样
+    HIST.t[HIDX]=S.t;
+    HIST.wRef[HIDX]=S.wRef; HIST.wm[HIDX]=S.wm;
+    HIST.idRef[HIDX]=S.idRef; HIST.id[HIDX]=S.id;
+    HIST.iqRef[HIDX]=S.iqRef; HIST.iq[HIDX]=S.iq;
+    HIST.Te[HIDX]=S.Te;
+    let TLtot = S.TL;
+    if (S.t < S.TL_pulse_end) TLtot += S.TL_pulse;
+    if (S.TL_sin>0) TLtot += S.TL_sin*Math.sin(TAU*2*S.t);
+    HIST.TL[HIDX]=TLtot;
+    HIST.ia[HIDX]=S.ia; HIST.ib[HIDX]=S.ib; HIST.ic[HIDX]=S.ic;
+    const c=Math.cos(S.the), s=Math.sin(S.the);
+    HIST.ialpha[HIDX]=c*S.id - s*S.iq;
+    HIST.ibeta[HIDX] =s*S.id + c*S.iq;
+    HIST.the[HIDX]=S.the;
+    HIST.obs_th[HIDX]=S.obs_th;
+    HIST.obs_w[HIDX]=S.obs_w;
+    let terr = S.the - S.obs_th;
+    while (terr > PI) terr -= TAU;
+    while (terr < -PI) terr += TAU;
+    HIST.obs_err[HIDX]=terr;
+    HIST.ea_r[HIDX]=S.ea_real; HIST.eb_r[HIDX]=S.eb_real;
+    HIST.ea_e[HIDX]=S.obs_ea;  HIST.eb_e[HIDX]=S.obs_eb;
+    HIDX=(HIDX+1)%HN; HFILL=Math.min(HFILL+1,HN);
+    // FFT 重采样
+    fft_acc_t += wall*S.speed;
+    const fftDt = 1/FFT_FS;
+    while (fft_acc_t >= fftDt){
+      FFT_BUF[FFT_IDX] = S.iq;
+      FFT_IDX = (FFT_IDX+1) % FFT_N;
+      fft_acc_t -= fftDt;
+    }
+    // 矢量轨迹
+    abTrail.push([HIST.ialpha[(HIDX-1+HN)%HN], HIST.ibeta[(HIDX-1+HN)%HN]]);
+    if (abTrail.length>TRAIL_N) abTrail.shift();
+    dqTrail.push([S.id, S.iq]);
+    if (dqTrail.length>TRAIL_N) dqTrail.shift();
+  }
+  render();
+  requestAnimationFrame(loop);
+}
+
+//============================================================
+// 渲染：通用工具
+//============================================================
+function fit(canvas){
+  const dpr=window.devicePixelRatio||1;
+  const r=canvas.getBoundingClientRect();
+  const w=r.width|0, h=r.height|0;
+  if (canvas.width!==w*dpr||canvas.height!==h*dpr){
+    canvas.width=w*dpr; canvas.height=h*dpr;
+  }
+  const g=canvas.getContext('2d');
+  g.setTransform(dpr,0,0,dpr,0,0);
+  g.clearRect(0,0,w,h);
+  return {g,w,h};
+}
+function arrow(g, x0,y0, x1,y1, col, lw=2, head=8){
+  g.strokeStyle=col; g.fillStyle=col; g.lineWidth=lw;
+  g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke();
+  const a=Math.atan2(y1-y0, x1-x0);
+  g.beginPath();
+  g.moveTo(x1,y1);
+  g.lineTo(x1-head*Math.cos(a-0.4), y1-head*Math.sin(a-0.4));
+  g.lineTo(x1-head*Math.cos(a+0.4), y1-head*Math.sin(a+0.4));
+  g.closePath(); g.fill();
+}
+
+//============================================================
+// αβ 矢量图 + SVPWM 扇区
+//============================================================
+function drawAB(){
+  const {g,w,h}=fit($('cv_ab'));
+  const cx=w/2, cy=h/2;
+  const Vmax = S.mod==='SVPWM'? S.Vdc/SQ3 : S.Vdc/2;
+  const R = Math.min(w,h)*0.4;
+  // 一个比例：让电压矢量 norm Vmax 对应半径 R
+  const kV = R/Vmax;
+  // 电流比例（独立）：用 iqMax+|idRef| 估计
+  const Imax = Math.max(3, S.iqMax*0.9);
+  const kI = R/Imax;
+  // 正确几何：六边形顶点 = 2Vdc/3，内切圆（线性极限）= Vdc/√3 = Vmax
+  // kV = R/Vmax → R 对应 Vmax（线性极限），六边形顶点在 R/cos30°
+  const hexR = R / Math.cos(PI/6);  // = R × 2/√3 ≈ 1.155R，对应 2Vdc/3
+  // 背景：扇区（填到六边形边界）
+  const sectorCols = ['rgba(96,165,250,.10)','rgba(74,222,128,.10)','rgba(251,146,60,.10)',
+                      'rgba(167,139,250,.10)','rgba(244,114,182,.10)','rgba(45,212,191,.10)'];
+  for (let k=0;k<6;k++){
+    g.beginPath();
+    g.moveTo(cx,cy);
+    g.arc(cx,cy, hexR, -k*PI/3, -(k+1)*PI/3, true);
+    g.closePath();
+    g.fillStyle = (k+1===S.sector) ? sectorCols[k].replace('.10','.35') : sectorCols[k];
+    g.fill();
+  }
+  // 六边形（SVPWM 可达边界，顶点 = 2Vdc/3）
+  g.strokeStyle=css('--bd'); g.lineWidth=1; g.beginPath();
+  for (let k=0;k<6;k++){
+    const a=k*PI/3, x=cx+hexR*Math.cos(a), y=cy-hexR*Math.sin(a);
+    if (k===0) g.moveTo(x,y); else g.lineTo(x,y);
+  } g.closePath(); g.stroke();
+  // 内切圆 = 线性调制极限 = Vdc/√3 = Vmax，对应画布半径 R
+  g.strokeStyle=css('--purple'); g.setLineDash([4,4]); g.beginPath();
+  g.arc(cx,cy,R,0,TAU); g.stroke(); g.setLineDash([]);
+  // 轴（延伸到六边形外侧）
+  g.strokeStyle=css('--tx2'); g.lineWidth=1;
+  g.beginPath(); g.moveTo(cx-hexR*1.1,cy); g.lineTo(cx+hexR*1.1,cy);
+  g.moveTo(cx,cy-hexR*1.1); g.lineTo(cx,cy+hexR*1.1); g.stroke();
+  g.fillStyle=css('--tx2'); g.font='11px var(--mono)';
+  g.fillText('α', cx+hexR*1.12, cy+4);
+  g.fillText('β', cx-4, cy-hexR*1.1);
+  // 扇区编号（放在线性圆内侧 0.75R 处）
+  g.font='10px var(--mono)'; g.fillStyle=css('--tx3');
+  for (let k=0;k<6;k++){
+    const a=-(k+0.5)*PI/3;
+    g.fillText('S'+(k+1), cx+R*0.72*Math.cos(a)-7, cy+R*0.72*Math.sin(a)+4);
+  }
+  // 电流矢量
+  const ialpha = HIST.ialpha[(HIDX-1+HN)%HN]||0;
+  const ibeta  = HIST.ibeta[(HIDX-1+HN)%HN]||0;
+  // 电流轨迹
+  g.strokeStyle='rgba(234,88,12,.25)'; g.lineWidth=1;
+  g.beginPath();
+  for (let i=0;i<abTrail.length;i++){
+    const x=cx+abTrail[i][0]*kI, y=cy-abTrail[i][1]*kI;
+    if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+  } g.stroke();
+  arrow(g, cx,cy, cx+ialpha*kI, cy-ibeta*kI, css('--orange'), 2.5, 9);
+  // 电压矢量
+  arrow(g, cx,cy, cx+S.va*kV, cy-S.vb*kV, css('--blue'), 2.5, 9);
+  // 当前转子角 θe
+  g.strokeStyle=css('--purple'); g.setLineDash([3,3]); g.lineWidth=1;
+  g.beginPath(); g.moveTo(cx,cy);
+  g.lineTo(cx+hexR*0.88*Math.cos(S.the), cy-hexR*0.88*Math.sin(S.the));
+  g.stroke(); g.setLineDash([]);
+  // 文字
+  g.font='10px var(--mono)'; g.fillStyle=css('--tx2');
+  g.fillText(`|V_s|=${Math.hypot(S.va,S.vb).toFixed(2)} V / ${Vmax.toFixed(1)}`, 8, 14);
+  g.fillText(`|I_s|=${Math.hypot(ialpha,ibeta).toFixed(2)} A`, 8, 28);
+  g.fillText(`扇区 ${S.sector}`, 8, 42);
+  g.fillText(`θ_e=${(S.the*180/PI).toFixed(0)}°`, 8, 56);
+}
+
+//============================================================
+// dq 坐标图
+//============================================================
+function drawDQ(){
+  const {g,w,h}=fit($('cv_dq'));
+  const cx=w/2, cy=h/2;
+  const R=Math.min(w,h)*0.42;
+  const Imax = Math.max(3, S.iqMax*1.1);
+  const k = R/Imax;
+  // 网格
+  g.strokeStyle=css('--bd'); g.lineWidth=1;
+  for (let i=-Math.floor(Imax);i<=Math.floor(Imax);i++){
+    if (i===0) continue;
+    g.beginPath(); g.moveTo(cx-R,cy-i*k); g.lineTo(cx+R,cy-i*k); g.stroke();
+    g.beginPath(); g.moveTo(cx+i*k,cy-R); g.lineTo(cx+i*k,cy+R); g.stroke();
+  }
+  // 限幅圆
+  g.strokeStyle=css('--red'); g.setLineDash([4,3]); g.beginPath();
+  g.arc(cx,cy, S.iqMax*k, 0, TAU); g.stroke(); g.setLineDash([]);
+  // 轴
+  g.strokeStyle=css('--tx2'); g.lineWidth=1;
+  g.beginPath(); g.moveTo(cx-R,cy); g.lineTo(cx+R,cy);
+  g.moveTo(cx,cy-R); g.lineTo(cx,cy+R); g.stroke();
+  g.fillStyle=css('--tx2'); g.font='11px var(--mono)';
+  g.fillText('d', cx+R+4, cy+4); g.fillText('q', cx-4, cy-R-4);
+  // MTPA：SPM 时为 id=0 (q 轴)，IPM 时为曲线
+  g.strokeStyle=css('--teal'); g.setLineDash([2,3]); g.beginPath();
+  if (Math.abs(S.Ld-S.Lq) < 1e-6){
+    g.moveTo(cx,cy-R); g.lineTo(cx,cy+R);
+  } else {
+    // id_mtpa = psif/(4(Ld-Lq)) - sqrt(psif^2/(16(Ld-Lq)^2)+iq^2/2) for Ld<Lq
+    for (let iq=-S.iqMax;iq<=S.iqMax;iq+=0.2){
+      const dL = S.Ld-S.Lq;
+      const id_mt = S.psif/(4*dL) - Math.sign(dL)*Math.sqrt(S.psif*S.psif/(16*dL*dL) + iq*iq/2);
+      const x=cx+id_mt*k, y=cy-iq*k;
+      if (iq===-S.iqMax) g.moveTo(x,y); else g.lineTo(x,y);
+    }
+  }
+  g.stroke(); g.setLineDash([]);
+  // 轨迹
+  g.strokeStyle='rgba(22,163,74,.3)'; g.lineWidth=1;
+  g.beginPath();
+  for (let i=0;i<dqTrail.length;i++){
+    const x=cx+dqTrail[i][0]*k, y=cy-dqTrail[i][1]*k;
+    if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+  } g.stroke();
+  // 当前点
+  g.fillStyle=css('--green');
+  g.beginPath(); g.arc(cx+S.id*k, cy-S.iq*k, 5, 0, TAU); g.fill();
+  // 参考点
+  g.strokeStyle=css('--red'); g.lineWidth=1.5;
+  g.beginPath(); g.arc(cx+S.idRef*k, cy-S.iqRef*k, 7, 0, TAU); g.stroke();
+  // 文字
+  g.font='10px var(--mono)'; g.fillStyle=css('--tx2');
+  g.fillText(`i_d=${S.id.toFixed(2)} A`, 8, 14);
+  g.fillText(`i_q=${S.iq.toFixed(2)} A`, 8, 28);
+  g.fillText(`MTPA轨迹(青)`, 8, h-8);
+}
+
+//============================================================
+// 时域曲线（4 子图）
+//============================================================
+function getHistArr(arr){
+  // 返回最新 N 个点（按时序）
+  const out=[]; const start=HFILL<HN ? 0 : HIDX;
+  const len = HFILL;
+  for (let i=0;i<len;i++) out.push(arr[(start+i)%HN]);
+  return out;
+}
+function drawTS(){
+  const {g,w,h}=fit($('cv_ts'));
+  if (HFILL<2) return;
+  const ts = getHistArr(HIST.t);
+  const t0 = ts[0], t1=ts[ts.length-1];
+  const Tspan = Math.max(0.5, t1-t0);
+  const padL=44, padR=10, padT=8, padB=18;
+  const subH = (h-padT-padB)/4;
+  // 4 个 sub: 0 速度, 1 id, 2 iq, 3 转矩
+  const subs = [
+    {y:padT,            ttl:'ω (rad/s)',   pairs:[['wRef',css('--blue'),'dash'],['wm',css('--blue'),'solid']]},
+    {y:padT+subH,       ttl:'i_d (A)',     pairs:[['idRef',css('--green'),'dash'],['id',css('--green'),'solid']]},
+    {y:padT+2*subH,     ttl:'i_q (A)',     pairs:[['iqRef',css('--orange'),'dash'],['iq',css('--orange'),'solid']]},
+    {y:padT+3*subH,     ttl:'T (N·m)',     pairs:[['Te',css('--purple'),'solid'],['TL',css('--tx2'),'dash']]},
+  ];
+  g.font='10px var(--mono)';
+  for (const sub of subs){
+    // y 范围
+    let lo=Infinity, hi=-Infinity;
+    for (const [k] of sub.pairs){
+      const arr=getHistArr(HIST[k]);
+      for (const v of arr){ if (v<lo) lo=v; if (v>hi) hi=v; }
+    }
+    if (lo===hi){ lo-=1; hi+=1; }
+    if (lo>0) lo*=0.95; else lo*=1.05;
+    if (hi>0) hi*=1.05; else hi*=0.95;
+    const span=hi-lo;
+    // 框
+    g.strokeStyle=css('--bd'); g.lineWidth=1;
+    g.strokeRect(padL, sub.y, w-padL-padR, subH-2);
+    // 零线
+    if (lo<0 && hi>0){
+      const zy=sub.y + (hi-0)/span*(subH-2);
+      g.strokeStyle=css('--bd'); g.setLineDash([2,3]);
+      g.beginPath(); g.moveTo(padL,zy); g.lineTo(w-padR,zy); g.stroke();
+      g.setLineDash([]);
+    }
+    // 曲线
+    for (const [k,col,style] of sub.pairs){
+      const arr=getHistArr(HIST[k]);
+      g.strokeStyle=col; g.lineWidth=1.4;
+      if (style==='dash') g.setLineDash([4,3]); else g.setLineDash([]);
+      g.beginPath();
+      for (let i=0;i<arr.length;i++){
+        const x = padL + (ts[i]-t0)/Tspan*(w-padL-padR);
+        const y = sub.y + (hi-arr[i])/span*(subH-2);
+        if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+      }
+      g.stroke();
+      g.setLineDash([]);
+    }
+    // 标签
+    g.fillStyle=css('--tx2');
+    g.fillText(sub.ttl, 4, sub.y+10);
+    g.fillText(hi.toFixed(2), 4, sub.y+20);
+    g.fillText(lo.toFixed(2), 4, sub.y+subH-4);
+  }
+  // X 轴
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText(`t = ${t0.toFixed(2)} s`, padL, h-4);
+  g.fillText(`${t1.toFixed(2)} s`, w-padR-30, h-4);
+  // 鼠标悬停十字线
+  const m = MOUSE['cv_ts'];
+  if (m && m.active && m.x>=padL && m.x<=w-padR){
+    g.strokeStyle=css('--tx3'); g.lineWidth=1; g.setLineDash([3,3]);
+    g.beginPath(); g.moveTo(m.x, padT); g.lineTo(m.x, h-padB); g.stroke();
+    g.setLineDash([]);
+    // 插值时间
+    const tMouse = t0 + (m.x-padL)/(w-padL-padR)*Tspan;
+    // 找到最近的历史索引
+    let closestI=0, bestDt=Infinity;
+    for (let i=0;i<ts.length;i++){
+      const d=Math.abs(ts[i]-tMouse);
+      if (d<bestDt){ bestDt=d; closestI=i; }
+    }
+    // 面板背景框
+    const bx=Math.min(m.x+8, w-135), by=Math.max(padT, m.y-40);
+    g.fillStyle='rgba(0,0,0,.75)'; g.fillRect(bx, by, 128, 14+subs.length*13);
+    g.fillStyle='#fff'; g.font='10px var(--mono)';
+    g.fillText(`t=${tMouse.toFixed(3)}s`, bx+4, by+11);
+    for (let si=0;si<subs.length;si++){
+      const sub = subs[si];
+      // 取第一个 solid 通道的值
+      let val = 0;
+      for (const [k,,style] of sub.pairs){
+        const arr = getHistArr(HIST[k]);
+        if (closestI < arr.length){
+          val = arr[closestI];
+          if (style==='solid') break;  // 优先取实际值
+        }
+      }
+      g.fillText(`${sub.ttl}: ${val.toFixed(3)}`, bx+4, by+24+si*13);
+    }
+  }
+}
+
+//============================================================
+// Tab 4: 相量盘
+//============================================================
+function drawPhasor(){
+  const {g,w,h}=fit($('cv_pha'));
+  const cx=w/2, cy=h/2;
+  const R=Math.min(w,h)*0.42;
+  const Imax = Math.max(3, S.iqMax);
+  const k = R/Imax;
+  // 背景圆
+  g.strokeStyle=css('--bd'); g.lineWidth=1;
+  g.beginPath(); g.arc(cx,cy,R,0,TAU); g.stroke();
+  // 三相轴 (A:0°, B:120°, C:240° 在 αβ 平面上)
+  const axes=[
+    {ang:0,           col:css('--red'),   lab:'a'},
+    {ang:2*PI/3,      col:css('--green'), lab:'b'},
+    {ang:4*PI/3,      col:css('--blue'),  lab:'c'},
+  ];
+  for (const ax of axes){
+    g.strokeStyle=ax.col; g.lineWidth=1; g.globalAlpha=0.5;
+    g.beginPath();
+    g.moveTo(cx-R*1.05*Math.cos(ax.ang), cy+R*1.05*Math.sin(ax.ang));
+    g.lineTo(cx+R*1.05*Math.cos(ax.ang), cy-R*1.05*Math.sin(ax.ang));
+    g.stroke();
+    g.globalAlpha=1;
+    g.fillStyle=ax.col; g.font='12px var(--mono)';
+    g.fillText(ax.lab, cx+R*1.12*Math.cos(ax.ang)-4, cy-R*1.12*Math.sin(ax.ang)+4);
+  }
+  // αβ 轴
+  g.strokeStyle=css('--tx2'); g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(cx-R*1.05,cy); g.lineTo(cx+R*1.05,cy);
+  g.moveTo(cx,cy-R*1.05); g.lineTo(cx,cy+R*1.05); g.stroke();
+  g.setLineDash([]);
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText('α', cx+R*1.1, cy+12); g.fillText('β', cx+8, cy-R*1.05);
+  // 三相相量：每相沿自身轴方向画长度=瞬时值
+  for (let i=0;i<3;i++){
+    const val = [S.ia,S.ib,S.ic][i];
+    arrow(g, cx,cy,
+      cx + val*k*Math.cos(axes[i].ang),
+      cy - val*k*Math.sin(axes[i].ang),
+      axes[i].col, 2, 7);
+  }
+  // 合成 αβ 矢量
+  const ialpha = HIST.ialpha[(HIDX-1+HN)%HN]||0;
+  const ibeta  = HIST.ibeta[(HIDX-1+HN)%HN]||0;
+  arrow(g, cx,cy, cx+ialpha*k, cy-ibeta*k, css('--orange'), 3, 10);
+  // dq 轴（随 θe 旋转）
+  g.strokeStyle=css('--purple'); g.setLineDash([5,4]); g.lineWidth=1.5;
+  g.beginPath();
+  g.moveTo(cx-R*Math.cos(S.the), cy+R*Math.sin(S.the));
+  g.lineTo(cx+R*Math.cos(S.the), cy-R*Math.sin(S.the));
+  g.moveTo(cx+R*Math.sin(S.the), cy+R*Math.cos(S.the));
+  g.lineTo(cx-R*Math.sin(S.the), cy-R*Math.cos(S.the));
+  g.stroke(); g.setLineDash([]);
+  g.fillStyle=css('--purple'); g.font='11px var(--mono)';
+  g.fillText('d', cx+R*1.0*Math.cos(S.the)+4, cy-R*1.0*Math.sin(S.the));
+  g.fillText('q', cx-R*1.0*Math.sin(S.the)+4, cy-R*1.0*Math.cos(S.the));
+  // 文字
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText(`θ_e=${(S.the*180/PI).toFixed(0)}°`, 8, 14);
+  g.fillText(`i_a=${S.ia.toFixed(2)}`, 8, 28);
+  g.fillText(`i_b=${S.ib.toFixed(2)}`, 8, 42);
+  g.fillText(`i_c=${S.ic.toFixed(2)}`, 8, 56);
+  g.fillText(`i_α=${ialpha.toFixed(2)} i_β=${ibeta.toFixed(2)}`, 8, 70);
+  g.fillText(`i_d=${S.id.toFixed(2)} i_q=${S.iq.toFixed(2)}`, 8, 84);
+}
+
+function drawStrip(canvasId, channels){
+  const {g,w,h}=fit($(canvasId));
+  if (HFILL<2) return;
+  const ts=getHistArr(HIST.t);
+  const t0=ts[0], t1=ts[ts.length-1], Tspan=Math.max(0.5,t1-t0);
+  const padL=36, padR=8, padT=4, padB=14;
+  // 范围
+  let lo=Infinity, hi=-Infinity;
+  for (const ch of channels){
+    const a=getHistArr(HIST[ch.key]);
+    for (const v of a){ if (v<lo) lo=v; if (v>hi) hi=v; }
+  }
+  if (lo===hi){ lo-=1; hi+=1; }
+  const pad=(hi-lo)*0.12; lo-=pad; hi+=pad;
+  const span=hi-lo;
+  g.strokeStyle=css('--bd'); g.strokeRect(padL,padT, w-padL-padR, h-padT-padB);
+  if (lo<0 && hi>0){
+    const zy=padT + (hi-0)/span*(h-padT-padB);
+    g.strokeStyle=css('--bd'); g.setLineDash([2,3]);
+    g.beginPath(); g.moveTo(padL,zy); g.lineTo(w-padR,zy); g.stroke();
+    g.setLineDash([]);
+  }
+  for (const ch of channels){
+    const a=getHistArr(HIST[ch.key]);
+    g.strokeStyle=ch.col; g.lineWidth=1.4; g.beginPath();
+    for (let i=0;i<a.length;i++){
+      const x=padL+(ts[i]-t0)/Tspan*(w-padL-padR);
+      const y=padT+(hi-a[i])/span*(h-padT-padB);
+      if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+    } g.stroke();
+  }
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText(hi.toFixed(2), 2, padT+10);
+  g.fillText(lo.toFixed(2), 2, h-padB+2);
+  let lx=padL+6;
+  for (const ch of channels){
+    g.fillStyle=ch.col; g.fillText(ch.lab, lx, padT+10); lx += ch.lab.length*7+10;
+  }
+}
+
+//============================================================
+// 观测器：反电势相图 + 时域
+//============================================================
+function drawEMF(){
+  const {g,w,h}=fit($('cv_emf'));
+  const cx=w/2, cy=h/2;
+  const R=Math.min(w,h)*0.42;
+  // 估计反电势量级
+  let Emax = 0.5;
+  for (let i=0;i<HFILL;i++){
+    const v = Math.hypot(HIST.ea_r[i], HIST.eb_r[i]);
+    if (v>Emax) Emax=v;
+  }
+  Emax = Math.max(Emax*1.1, 0.5);
+  const k = R/Emax;
+  // 网格
+  g.strokeStyle=css('--bd'); g.lineWidth=1;
+  g.beginPath(); g.arc(cx,cy,R,0,TAU); g.stroke();
+  g.beginPath(); g.arc(cx,cy,R*0.5,0,TAU); g.stroke();
+  g.strokeStyle=css('--tx2');
+  g.beginPath(); g.moveTo(cx-R,cy); g.lineTo(cx+R,cy);
+  g.moveTo(cx,cy-R); g.lineTo(cx,cy+R); g.stroke();
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText('e_α', cx+R+4, cy+12); g.fillText('e_β', cx+8, cy-R-2);
+  // 真值轨迹
+  if (HFILL>2){
+    const arr_r_a=getHistArr(HIST.ea_r), arr_r_b=getHistArr(HIST.eb_r);
+    g.strokeStyle='rgba(96,165,250,.35)'; g.lineWidth=1;
+    g.beginPath();
+    for (let i=Math.max(0,arr_r_a.length-200);i<arr_r_a.length;i++){
+      const x=cx+arr_r_a[i]*k, y=cy-arr_r_b[i]*k;
+      if (i===Math.max(0,arr_r_a.length-200)) g.moveTo(x,y); else g.lineTo(x,y);
+    } g.stroke();
+    const arr_e_a=getHistArr(HIST.ea_e), arr_e_b=getHistArr(HIST.eb_e);
+    g.strokeStyle='rgba(234,88,12,.5)'; g.lineWidth=1;
+    g.beginPath();
+    for (let i=Math.max(0,arr_e_a.length-200);i<arr_e_a.length;i++){
+      const x=cx+arr_e_a[i]*k, y=cy-arr_e_b[i]*k;
+      if (i===Math.max(0,arr_e_a.length-200)) g.moveTo(x,y); else g.lineTo(x,y);
+    } g.stroke();
+  }
+  // 当前指针
+  arrow(g, cx,cy, cx+S.ea_real*k, cy-S.eb_real*k, css('--blue'), 2.5, 9);
+  arrow(g, cx,cy, cx+S.obs_ea*k, cy-S.obs_eb*k, css('--orange'), 2.5, 9);
+  // 文字
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText(`|e_real|=${Math.hypot(S.ea_real,S.eb_real).toFixed(2)} V`, 8, 14);
+  g.fillText(`|e_obs|=${Math.hypot(S.obs_ea,S.obs_eb).toFixed(2)} V`, 8, 28);
+  g.fillText(`观测器: ${S.obsType}`, 8, 42);
+  g.fillText(`闭环: ${S.fbSource}`, 8, 56);
+}
+
+function drawPole(){
+  const {g,w,h}=fit($('cv_pole'));
+  const cx=w/2, cy=h*0.55;
+  // 坐标轴范围 自适应：基于电流环带宽和观测器带宽
+  const bw_cur = Math.max(S.Kpi/Math.max(S.Ld,1e-6), 100);
+  const bw_obs = S.obsType==='SMO' ? TAU*S.fLpf :
+                 S.obsType==='LUE' ? S.woLue : bw_cur;
+  const range = Math.max(bw_cur, bw_obs)*1.5;
+  const kx = w*0.42/range, ky = h*0.42/range;
+  // 网格
+  g.strokeStyle=css('--bd'); g.lineWidth=1;
+  for (let i=-4;i<=4;i++){
+    if (i===0) continue;
+    g.beginPath(); g.moveTo(cx+i*kx*range/4, 4); g.lineTo(cx+i*kx*range/4, h-4); g.stroke();
+    g.beginPath(); g.moveTo(4, cy+i*ky*range/4); g.lineTo(w-4, cy+i*ky*range/4); g.stroke();
+  }
+  g.strokeStyle=css('--tx2'); g.lineWidth=1;
+  g.beginPath(); g.moveTo(4,cy); g.lineTo(w-4,cy);
+  g.moveTo(cx,4); g.lineTo(cx,h-4); g.stroke();
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText('Re', w-22, cy-4);
+  g.fillText('Im', cx+4, 12);
+  g.fillText('LHP 稳定', 6, h-6);
+  // 阻尼线 ζ=0.707
+  g.strokeStyle=css('--bd'); g.setLineDash([2,3]);
+  g.beginPath();
+  g.moveTo(cx, cy); g.lineTo(cx - range*kx, cy - range*ky);
+  g.moveTo(cx, cy); g.lineTo(cx - range*kx, cy + range*ky);
+  g.stroke(); g.setLineDash([]);
+  // 电流环闭环极点：1阶 PI + 1阶 plant → s² + (R+Kp)/L s + Ki/L = 0
+  const a = (S.Rs + S.Kpi)/Math.max(S.Ld,1e-6);
+  const b = S.Kii/Math.max(S.Ld,1e-6);
+  const disc = a*a - 4*b;
+  let p1r,p1i,p2r,p2i;
+  if (disc >= 0){
+    const sq = Math.sqrt(disc);
+    p1r = -a/2 + sq/2; p1i = 0;
+    p2r = -a/2 - sq/2; p2i = 0;
+  } else {
+    p1r = -a/2; p1i =  Math.sqrt(-disc)/2;
+    p2r = -a/2; p2i = -Math.sqrt(-disc)/2;
+  }
+  const drawCross = (re, im, col) => {
+    const x=cx+re*kx, y=cy-im*ky;
+    g.strokeStyle=col; g.lineWidth=2;
+    g.beginPath();
+    g.moveTo(x-6,y-6); g.lineTo(x+6,y+6);
+    g.moveTo(x-6,y+6); g.lineTo(x+6,y-6);
+    g.stroke();
+  };
+  drawCross(p1r,p1i, css('--green'));
+  drawCross(p2r,p2i, css('--green'));
+  // 观测器极点
+  if (S.obsType==='LUE'){
+    drawCross(-S.woLue, 0, css('--red'));
+    drawCross(-S.woLue, 0, css('--red'));
+  } else if (S.obsType==='SMO'){
+    drawCross(-TAU*S.fLpf, 0, css('--red'));
+  }
+  // 文字
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  g.fillText(`电流环极点: ${p1r.toFixed(0)}${p1i>=0?'+':''}${p1i.toFixed(0)}j`, 6, 14);
+  g.fillText(`            ${p2r.toFixed(0)}${p2i>=0?'+':''}${p2i.toFixed(0)}j`, 6, 28);
+  g.fillText(`Re 范围 ±${range.toFixed(0)}`, 6, 42);
+}
+
+function drawObsTS(){
+  const {g,w,h}=fit($('cv_obs_ts'));
+  if (HFILL<2) return;
+  const ts=getHistArr(HIST.t);
+  const t0=ts[0], t1=ts[ts.length-1], Tspan=Math.max(0.5,t1-t0);
+  const padL=44, padR=10, padT=8, padB=18;
+  const subH = (h-padT-padB)/3;
+  const subs = [
+    {y:padT,            ttl:'θ (rad)',  pairs:[['the',css('--blue'),'dash'],['obs_th',css('--orange'),'solid']]},
+    {y:padT+subH,       ttl:'θ̃ (rad)', pairs:[['obs_err',css('--red'),'solid']]},
+    {y:padT+2*subH,     ttl:'ω_e (rad/s)', pairs:[['wm', css('--blue'),'dash'],['obs_w',css('--orange'),'solid']]},
+  ];
+  g.font='10px var(--mono)';
+  for (const sub of subs){
+    let lo=Infinity, hi=-Infinity;
+    for (const [k] of sub.pairs){
+      const arr=getHistArr(HIST[k]);
+      for (let i=0;i<arr.length;i++){
+        let v = arr[i];
+        if (k==='wm') v = v*S.Pn; // 转电气
+        if (v<lo) lo=v; if (v>hi) hi=v;
+      }
+    }
+    if (lo===hi){ lo-=1; hi+=1; }
+    const pad=(hi-lo)*0.1; lo-=pad; hi+=pad;
+    const span=hi-lo;
+    g.strokeStyle=css('--bd'); g.lineWidth=1;
+    g.strokeRect(padL, sub.y, w-padL-padR, subH-2);
+    if (lo<0 && hi>0){
+      const zy=sub.y + (hi-0)/span*(subH-2);
+      g.strokeStyle=css('--bd'); g.setLineDash([2,3]);
+      g.beginPath(); g.moveTo(padL,zy); g.lineTo(w-padR,zy); g.stroke();
+      g.setLineDash([]);
+    }
+    for (const [k,col,style] of sub.pairs){
+      const arr=getHistArr(HIST[k]);
+      g.strokeStyle=col; g.lineWidth=1.4;
+      if (style==='dash') g.setLineDash([4,3]); else g.setLineDash([]);
+      g.beginPath();
+      for (let i=0;i<arr.length;i++){
+        let v=arr[i]; if (k==='wm') v=v*S.Pn;
+        const x=padL+(ts[i]-t0)/Tspan*(w-padL-padR);
+        const y=sub.y+(hi-v)/span*(subH-2);
+        if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+      }
+      g.stroke(); g.setLineDash([]);
+    }
+    g.fillStyle=css('--tx2');
+    g.fillText(sub.ttl, 4, sub.y+10);
+    g.fillText(hi.toFixed(2), 4, sub.y+20);
+    g.fillText(lo.toFixed(2), 4, sub.y+subH-4);
+  }
+  g.fillStyle=css('--tx2');
+  g.fillText(`t = ${t0.toFixed(2)} → ${t1.toFixed(2)} s`, padL, h-4);
+  // 鼠标悬停十字线
+  const m = MOUSE['cv_obs_ts'];
+  if (m && m.active && m.x>=padL && m.x<=w-padR){
+    g.strokeStyle=css('--tx3'); g.lineWidth=1; g.setLineDash([3,3]);
+    g.beginPath(); g.moveTo(m.x, padT); g.lineTo(m.x, h-padB); g.stroke();
+    g.setLineDash([]);
+    const tMouse = t0 + (m.x-padL)/(w-padL-padR)*Tspan;
+    let closestI=0, bestDt=Infinity;
+    for (let i=0;i<ts.length;i++){
+      const d=Math.abs(ts[i]-tMouse);
+      if (d<bestDt){ bestDt=d; closestI=i; }
+    }
+    const bx=Math.min(m.x+8, w-160), by=Math.max(padT, m.y-40);
+    g.fillStyle='rgba(0,0,0,.75)'; g.fillRect(bx, by, 155, 14+subs.length*13);
+    g.fillStyle='#fff'; g.font='10px var(--mono)';
+    g.fillText(`t=${tMouse.toFixed(3)}s`, bx+4, by+11);
+    for (let si=0;si<subs.length;si++){
+      const sub=subs[si];
+      let val=0;
+      for (const [k,,style] of sub.pairs){
+        const arr=getHistArr(HIST[k]);
+        if (closestI<arr.length){
+          val=arr[closestI]; if (k==='wm') val*=S.Pn;
+          if (style==='solid') break;
+        }
+      }
+      g.fillText(`${sub.ttl}: ${val.toFixed(3)}`, bx+4, by+24+si*13);
+    }
+  }
+}
+
+//============================================================
+// FFT (radix-2)
+//============================================================
+function fft(re, im){
+  const n=re.length;
+  // 位反序
+  for (let i=1,j=0;i<n;i++){
+    let bit=n>>1;
+    for (;j&bit;bit>>=1) j ^= bit;
+    j ^= bit;
+    if (i<j){ [re[i],re[j]]=[re[j],re[i]]; [im[i],im[j]]=[im[j],im[i]]; }
+  }
+  for (let len=2;len<=n;len<<=1){
+    const ang = -TAU/len;
+    const wreUnit = Math.cos(ang), wimUnit = Math.sin(ang);
+    for (let i=0;i<n;i+=len){
+      let wre=1, wim=0;
+      for (let k=0;k<len/2;k++){
+        const ure=re[i+k], uim=im[i+k];
+        const vre=re[i+k+len/2]*wre - im[i+k+len/2]*wim;
+        const vim=re[i+k+len/2]*wim + im[i+k+len/2]*wre;
+        re[i+k]=ure+vre; im[i+k]=uim+vim;
+        re[i+k+len/2]=ure-vre; im[i+k+len/2]=uim-vim;
+        const nwre = wre*wreUnit - wim*wimUnit;
+        wim = wre*wimUnit + wim*wreUnit; wre = nwre;
+      }
+    }
+  }
+}
+
+function drawFFT(){
+  const {g,w,h}=fit($('cv_fft'));
+  const re = new Float32Array(FFT_N), im = new Float32Array(FFT_N);
+  // 取连续 N 点（环形缓冲）+ Hann 窗
+  for (let i=0;i<FFT_N;i++){
+    const idx = (FFT_IDX + i) % FFT_N;
+    const win = 0.5*(1 - Math.cos(TAU*i/(FFT_N-1)));
+    re[i] = FFT_BUF[idx] * win;
+  }
+  fft(re, im);
+  const padL=44, padR=10, padT=8, padB=22;
+  const Wbox = w-padL-padR, Hbox = h-padT-padB;
+  const fMax = FFT_FS/2;
+  // dB 谱
+  const mags = new Float32Array(FFT_N/2);
+  let peak = -200, valley = 200;
+  for (let i=0;i<FFT_N/2;i++){
+    const m = Math.hypot(re[i], im[i])/FFT_N*2;
+    mags[i] = 20*Math.log10(Math.max(m, 1e-12));
+    if (i>=2 && mags[i]>peak) peak=mags[i];   // 跳过 DC 和 bin1
+    if (i>=2 && mags[i]<valley) valley=mags[i];
+  }
+  if (peak < -100) peak = 0;
+  if (valley > peak-10) valley = peak - 60;
+  const span = Math.max(60, Math.ceil((peak-valley)/10)*10 + 20);
+  const yMax = Math.ceil(peak/10)*10 + 10;
+  const yMin = yMax - span;
+  // 框
+  g.strokeStyle=css('--bd'); g.strokeRect(padL,padT,Wbox,Hbox);
+  // 网格
+  g.strokeStyle=css('--bd'); g.setLineDash([1,3]); g.lineWidth=1;
+  for (let db=yMin; db<=yMax; db+=20){
+    const y=padT+(yMax-db)/(yMax-yMin)*Hbox;
+    g.beginPath(); g.moveTo(padL,y); g.lineTo(padL+Wbox,y); g.stroke();
+    g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+    g.fillText(db+' dB', 4, y+4);
+  }
+  // 对数 X 轴
+  const fmin = 1;
+  const logMin = Math.log10(fmin), logMax = Math.log10(fMax);
+  const xOfF = f => padL + (Math.log10(Math.max(f,fmin))-logMin)/(logMax-logMin)*Wbox;
+  for (let d=0;d<=3;d++){
+    for (let m=1;m<10;m++){
+      const f = Math.pow(10,d)*m;
+      if (f>fMax) break;
+      const x=xOfF(f);
+      g.strokeStyle=css('--bd');
+      g.beginPath(); g.moveTo(x,padT); g.lineTo(x,padT+Hbox); g.stroke();
+    }
+  }
+  g.setLineDash([]);
+  // 频率标签
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  [1,10,100,1000].forEach(f=>{
+    if (f<=fMax){
+      const x=xOfF(f);
+      g.fillText(f+' Hz', x-12, h-6);
+    }
+  });
+  // 曲线
+  g.strokeStyle=css('--orange'); g.lineWidth=1.3; g.beginPath();
+  for (let i=1;i<FFT_N/2;i++){
+    const f = i*FFT_FS/FFT_N;
+    if (f<fmin) continue;
+    const x = xOfF(f);
+    const y = padT + (yMax-mags[i])/(yMax-yMin)*Hbox;
+    if (i===1) g.moveTo(x,y); else g.lineTo(x,y);
+  } g.stroke();
+  // 标基波估计
+  const fund = Math.abs(S.Pn*S.wm)/TAU;
+  if (fund>fmin && fund<fMax){
+    const x=xOfF(fund);
+    g.strokeStyle=css('--green'); g.setLineDash([3,3]);
+    g.beginPath(); g.moveTo(x,padT); g.lineTo(x,padT+Hbox); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle=css('--green');
+    g.fillText(`f_e=${fund.toFixed(1)}Hz`, x+4, padT+12);
+  }
+  // FFT 鼠标悬停
+  const mf = MOUSE['cv_fft'];
+  if (mf && mf.active && mf.x>=padL && mf.x<=padL+Wbox){
+    g.strokeStyle=css('--tx3'); g.lineWidth=1; g.setLineDash([3,3]);
+    g.beginPath(); g.moveTo(mf.x, padT); g.lineTo(mf.x, padT+Hbox); g.stroke();
+    g.setLineDash([]);
+    const logF = logMin + (mf.x-padL)/Wbox*(logMax-logMin);
+    const fMouse = Math.pow(10, logF);
+    const bin = Math.round(fMouse/FFT_FS*FFT_N);
+    const db = (bin>=0 && bin<FFT_N/2) ? mags[bin] : -200;
+    const bx=Math.min(mf.x+8, w-110), by=Math.max(padT, mf.y-10);
+    g.fillStyle='rgba(0,0,0,.75)'; g.fillRect(bx, by, 108, 28);
+    g.fillStyle='#fff'; g.font='10px var(--mono)';
+    g.fillText(`${fMouse.toFixed(1)} Hz`, bx+4, by+11);
+    g.fillText(`${db.toFixed(1)} dB`, bx+4, by+24);
+  }
+}
+
+function drawBode(){
+  const {g,w,h}=fit($('cv_bode'));
+  const padL=44, padR=10, padT=8, padB=22;
+  const subH=(h-padT-padB)/2;
+  const Wbox=w-padL-padR;
+  // 频率范围
+  const fmin=1, fmax=20000;
+  const logMin=Math.log10(fmin), logMax=Math.log10(fmax);
+  const xOfF = f => padL + (Math.log10(Math.max(f,fmin))-logMin)/(logMax-logMin)*Wbox;
+  // 计算 L(jω) = (Kp + Ki/(jω)) / (R + jωL)
+  const N = 400;
+  const fs_arr = new Float64Array(N), mag_arr = new Float64Array(N), pha_arr = new Float64Array(N);
+  let fc = NaN, pm = NaN, prevMag = null, prevF = null;
+  for (let i=0;i<N;i++){
+    const lf = logMin + (logMax-logMin)*i/(N-1);
+    const f = Math.pow(10, lf);
+    const w_ = TAU*f;
+    // numerator: Kp + Ki/(jw) = Kp - j Ki/w
+    const nre = S.Kpi, nim = -S.Kii/w_;
+    // denominator: R + jwL
+    const L = (S.Ld+S.Lq)/2;
+    const dre = S.Rs, dim = w_*L;
+    const denMag = dre*dre + dim*dim;
+    const Lre = (nre*dre + nim*dim)/denMag;
+    const Lim = (nim*dre - nre*dim)/denMag;
+    const m = Math.hypot(Lre, Lim);
+    const ph = Math.atan2(Lim, Lre)*180/PI;
+    fs_arr[i]=f; mag_arr[i]=20*Math.log10(m); pha_arr[i]=ph;
+    // 剪切频率：|L|=0dB → m=1
+    if (prevMag!=null){
+      if ((prevMag-1)*(m-1) < 0){
+        const t = (1-prevMag)/(m-prevMag);
+        fc = prevF + t*(f-prevF);
+        // 在 fc 处插值相位
+        const ph_at = pha_arr[i-1] + t*(pha_arr[i]-pha_arr[i-1]);
+        pm = 180 + ph_at;
+      }
+    }
+    prevMag=m; prevF=f;
+  }
+  // === 幅频 ===
+  const magMin=-40, magMax=80;
+  g.strokeStyle=css('--bd'); g.strokeRect(padL,padT,Wbox,subH-4);
+  // 网格
+  g.strokeStyle=css('--bd'); g.setLineDash([1,3]);
+  for (let db=magMin; db<=magMax; db+=20){
+    const y = padT + (magMax-db)/(magMax-magMin)*(subH-4);
+    g.beginPath(); g.moveTo(padL,y); g.lineTo(padL+Wbox,y); g.stroke();
+    g.fillStyle=css('--tx2'); g.font='10px var(--mono)'; g.fillText(db+' dB', 4, y+3);
+  }
+  // 频率网格（dec）
+  for (let d=0;d<=4;d++){
+    for (let m=1;m<10;m++){
+      const f = Math.pow(10,d)*m;
+      if (f>fmax) break;
+      const x = xOfF(f);
+      g.beginPath(); g.moveTo(x,padT); g.lineTo(x,padT+subH-4); g.stroke();
+    }
+  }
+  g.setLineDash([]);
+  // 0dB 线
+  const y0 = padT + magMax/(magMax-magMin)*(subH-4);
+  g.strokeStyle=css('--red'); g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(padL,y0); g.lineTo(padL+Wbox,y0); g.stroke();
+  g.setLineDash([]);
+  // 曲线
+  g.strokeStyle=css('--blue'); g.lineWidth=1.5; g.beginPath();
+  for (let i=0;i<N;i++){
+    const x=xOfF(fs_arr[i]);
+    const y = padT + clamp((magMax-mag_arr[i])/(magMax-magMin)*(subH-4), 0, subH-4);
+    if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+  } g.stroke();
+  // === 相频 ===
+  const phMin=-180, phMax=0;
+  const py = padT+subH+2;
+  g.strokeStyle=css('--bd'); g.strokeRect(padL, py, Wbox, subH-4);
+  g.setLineDash([1,3]);
+  for (let p=phMin;p<=phMax;p+=45){
+    const y=py+(phMax-p)/(phMax-phMin)*(subH-4);
+    g.strokeStyle=css('--bd');
+    g.beginPath(); g.moveTo(padL,y); g.lineTo(padL+Wbox,y); g.stroke();
+    g.fillStyle=css('--tx2'); g.fillText(p+'°', 4, y+3);
+  }
+  for (let d=0;d<=4;d++){
+    for (let m=1;m<10;m++){
+      const f = Math.pow(10,d)*m;
+      if (f>fmax) break;
+      const x = xOfF(f);
+      g.beginPath(); g.moveTo(x,py); g.lineTo(x,py+subH-4); g.stroke();
+    }
+  }
+  g.setLineDash([]);
+  // -180 线
+  const y180 = py + (phMax-(-180))/(phMax-phMin)*(subH-4);
+  g.strokeStyle=css('--red'); g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(padL,y180); g.lineTo(padL+Wbox,y180); g.stroke();
+  g.setLineDash([]);
+  g.strokeStyle=css('--purple'); g.lineWidth=1.5; g.beginPath();
+  for (let i=0;i<N;i++){
+    const x=xOfF(fs_arr[i]);
+    const y = py + clamp((phMax-pha_arr[i])/(phMax-phMin)*(subH-4), 0, subH-4);
+    if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+  } g.stroke();
+  // 标剪切频率与裕度
+  if (!isNaN(fc)){
+    const x=xOfF(fc);
+    g.strokeStyle=css('--green'); g.setLineDash([2,2]);
+    g.beginPath(); g.moveTo(x,padT); g.lineTo(x,py+subH-4); g.stroke();
+    g.setLineDash([]);
+    g.fillStyle=css('--green'); g.font='11px var(--mono)';
+    g.fillText(`f_c=${fc.toFixed(1)} Hz`, x+4, padT+12);
+    g.fillText(`PM=${pm.toFixed(1)}°`, x+4, padT+24);
+  }
+  // X 轴标签
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  [1,10,100,1000,10000].forEach(f=>{
+    if (f<=fmax){ g.fillText(f+'Hz', xOfF(f)-12, h-6); }
+  });
+  g.fillStyle=css('--blue'); g.font='10px var(--mono)';
+  g.fillText('|L| dB', padL+6, padT+12);
+  g.fillStyle=css('--purple');
+  g.fillText('∠L °', padL+6, py+12);
+}
+
+function drawSens(){
+  const {g,w,h}=fit($('cv_sens'));
+  const padL=44, padR=10, padT=8, padB=22;
+  const Wbox=w-padL-padR, Hbox=h-padT-padB;
+  const fmin=1, fmax=20000;
+  const logMin=Math.log10(fmin), logMax=Math.log10(fmax);
+  const xOfF = f => padL + (Math.log10(Math.max(f,fmin))-logMin)/(logMax-logMin)*Wbox;
+  const sMin=-40, sMax=20;
+  g.strokeStyle=css('--bd'); g.strokeRect(padL,padT,Wbox,Hbox);
+  g.setLineDash([1,3]);
+  for (let db=sMin; db<=sMax; db+=10){
+    const y=padT+(sMax-db)/(sMax-sMin)*Hbox;
+    g.strokeStyle=css('--bd'); g.beginPath();
+    g.moveTo(padL,y); g.lineTo(padL+Wbox,y); g.stroke();
+    g.fillStyle=css('--tx2'); g.font='10px var(--mono)'; g.fillText(db+'dB', 4, y+3);
+  }
+  for (let d=0;d<=4;d++) for (let m=1;m<10;m++){
+    const f=Math.pow(10,d)*m; if (f>fmax) break;
+    const x=xOfF(f); g.beginPath(); g.moveTo(x,padT); g.lineTo(x,padT+Hbox); g.stroke();
+  }
+  g.setLineDash([]);
+  // Compute S = 1/(1+L)
+  const N=400; const L=(S.Ld+S.Lq)/2;
+  let peak = -Infinity, fpeak = 0;
+  g.strokeStyle=css('--teal'); g.lineWidth=1.5; g.beginPath();
+  for (let i=0;i<N;i++){
+    const lf=logMin+(logMax-logMin)*i/(N-1);
+    const f=Math.pow(10,lf); const w_=TAU*f;
+    const nre=S.Kpi, nim=-S.Kii/w_;
+    const dre=S.Rs, dim=w_*L;
+    const denMag=dre*dre+dim*dim;
+    const Lre=(nre*dre+nim*dim)/denMag;
+    const Lim=(nim*dre-nre*dim)/denMag;
+    // 1+L
+    const onepLre=1+Lre, onepLim=Lim;
+    const Smag = 1/Math.hypot(onepLre, onepLim);
+    const db=20*Math.log10(Smag);
+    if (db>peak){ peak=db; fpeak=f; }
+    const x=xOfF(f);
+    const y=padT+clamp((sMax-db)/(sMax-sMin)*Hbox, 0, Hbox);
+    if (i===0) g.moveTo(x,y); else g.lineTo(x,y);
+  } g.stroke();
+  // 0dB
+  const y0=padT+sMax/(sMax-sMin)*Hbox;
+  g.strokeStyle=css('--red'); g.setLineDash([3,3]);
+  g.beginPath(); g.moveTo(padL,y0); g.lineTo(padL+Wbox,y0); g.stroke();
+  g.setLineDash([]);
+  g.fillStyle=css('--teal'); g.font='11px var(--mono)';
+  g.fillText(`M_s = ${peak.toFixed(1)} dB @ ${fpeak.toFixed(1)} Hz`, padL+8, padT+14);
+  g.fillStyle=css('--tx2'); g.font='10px var(--mono)';
+  [1,10,100,1000,10000].forEach(f=>{
+    if (f<=fmax) g.fillText(f+'Hz', xOfF(f)-12, h-6);
+  });
+}
+
+//============================================================
+// 渲染统一入口 + UI 更新
+//============================================================
+function updateText(){
+  $('itxt').textContent = `t = ${S.t.toFixed(3)} s`;
+  $('badge').textContent = S.running ? '运行中' : '已暂停';
+  $('badge').className = S.running ? 'run' : 'pause';
+  $('m_wm').textContent = `${S.wm.toFixed(2)} / ${S.wRef.toFixed(0)} rad/s`;
+  $('m_id').textContent = `${S.id.toFixed(2)} / ${S.idRef.toFixed(2)} A`;
+  $('m_iq').textContent = `${S.iq.toFixed(2)} / ${S.iqRef.toFixed(2)} A`;
+  $('m_te').textContent = `${S.Te.toFixed(3)} N·m`;
+  const Vmax=(S.mod==='SVPWM'?S.Vdc/SQ3:S.Vdc/2);
+  $('m_vs').textContent = `${Math.hypot(S.va,S.vb).toFixed(2)} / ${Vmax.toFixed(1)} V`;
+  $('m_sec').textContent = String(S.sector);
+  // 方程高亮值
+  $('e_Rs').textContent = $('e_Rs2').textContent = S.Rs.toFixed(2);
+  $('e_Ld').textContent = $('e_Ld2').textContent = $('e_Ld3').textContent = (S.Ld*1000).toFixed(2)+'m';
+  $('e_Lq').textContent = $('e_Lq2').textContent = $('e_Lq3').textContent = (S.Lq*1000).toFixed(2)+'m';
+  $('e_psif').textContent = $('e_psif2').textContent = S.psif.toFixed(3);
+  $('e_Pn').textContent = String(S.Pn);
+  $('e_J').textContent = S.J.toExponential(2);
+  $('e_TL').textContent = S.TL.toFixed(2);
+  $('e_B').textContent = S.B.toExponential(1);
+  $('e_Kpi').textContent = S.Kpi.toFixed(1);
+  $('e_Kii').textContent = S.Kii.toFixed(0);
+  const bw = S.Kpi/Math.max(S.Ld,1e-6);
+  $('e_bw').textContent = bw.toFixed(0);
+  $('e_bwhz').textContent = (bw/TAU).toFixed(0);
+}
+function render(){
+  updateText();
+  if (S.tab===1){ drawAB(); drawDQ(); drawTS(); }
+  else if (S.tab===2){ drawEMF(); drawPole(); drawObsTS(); }
+  else if (S.tab===3){ drawFFT(); drawBode(); drawSens(); }
+  else if (S.tab===4){
+    drawPhasor();
+    drawStrip('cv_3ph', [
+      {key:'ia', col:css('--red'),   lab:'i_a'},
+      {key:'ib', col:css('--green'), lab:'i_b'},
+      {key:'ic', col:css('--blue'),  lab:'i_c'},
+    ]);
+    drawStrip('cv_clk', [
+      {key:'ialpha', col:css('--teal'),   lab:'i_α'},
+      {key:'ibeta',  col:css('--purple'), lab:'i_β'},
+    ]);
+    drawStrip('cv_prk', [
+      {key:'id', col:css('--green'),  lab:'i_d'},
+      {key:'iq', col:css('--orange'), lab:'i_q'},
+    ]);
+  }
+}
+
+//============================================================
+// UI 绑定
+//============================================================
+function bindRange(key, scale=1, onChange){
+  const r=$('r_'+key), n=$('n_'+key);
+  if (!r||!n) return;
+  const apply=(v)=>{
+    v=parseFloat(v); if (!isFinite(v)) return;
+    v=clamp(v, parseFloat(r.min), parseFloat(r.max));
+    r.value=v; n.value=v;
+    S[key]=v*scale;
+    if (onChange) onChange();
+  };
+  r.addEventListener('input', e=>apply(e.target.value));
+  n.addEventListener('input', e=>apply(e.target.value));
+  n.addEventListener('change', e=>apply(e.target.value));
+}
+
+bindRange('Rs');
+bindRange('Ld', 1e-3);
+bindRange('Lq', 1e-3);
+bindRange('psif');
+bindRange('J');
+bindRange('B');
+bindRange('Pn');
+bindRange('TL');
+bindRange('wRef');
+bindRange('idRef');
+bindRange('Kpi');
+bindRange('Kii');
+bindRange('Kpw');
+bindRange('Kiw');
+bindRange('iqMax');
+bindRange('Vdc');
+bindRange('noise');
+bindRange('kSmo');
+bindRange('dSmo');
+bindRange('fLpf');
+bindRange('woLue');
+
+$('sel_obs').addEventListener('change', e=>{
+  S.obsType = e.target.value;
+  S.obs_ia=S.obs_ib=S.obs_ea=S.obs_eb=S.obs_th=S.obs_w=0;
+});
+$('sel_fb').addEventListener('change', e=> S.fbSource = e.target.value);
+
+$('sel_fs').addEventListener('change', e=> S.fs = parseInt(e.target.value));
+$('sel_mod').addEventListener('change', e=> S.mod = e.target.value);
+
+$('btn_play').addEventListener('click', ()=>{
+  S.running=!S.running;
+  $('btn_play').textContent = S.running ? '⏸ 暂停' : '▶ 继续';
+});
+$('btn_reset').addEventListener('click', ()=> resetState());
+$('sel_speed').addEventListener('change', e=> S.speed=parseFloat(e.target.value));
+$('btn_theme').addEventListener('click', ()=> document.body.classList.toggle('dark'));
+
+$('b_pulseTL').addEventListener('click', ()=>{
+  S.TL_pulse = 0.5;
+  S.TL_pulse_end = S.t + 1.0;
+});
+$('b_sinTL').addEventListener('click', e=>{
+  S.TL_sin = S.TL_sin>0 ? 0 : 0.3;
+  e.target.classList.toggle('on', S.TL_sin>0);
+});
+$('b_autoCur').addEventListener('click', ()=>{
+  const wc = TAU*500;
+  const L = Math.max(S.Ld, S.Lq);
+  const Kp = clamp(L*wc, 0.1, 2000);
+  const Ki = clamp(S.Rs*wc, 10, 200000);
+  $('r_Kpi').value=Kp.toFixed(2); $('n_Kpi').value=Kp.toFixed(2); S.Kpi=Kp;
+  $('r_Kii').value=Ki.toFixed(0); $('n_Kii').value=Ki.toFixed(0); S.Kii=Ki;
+});
+$('b_decouple').addEventListener('click', e=>{
+  S.decouple=!S.decouple;
+  e.target.textContent = '解耦：'+(S.decouple?'开':'关');
+  e.target.classList.toggle('on', S.decouple);
+});
+
+// 观测器自整定
+function setUI(key, val){
+  const r=$('r_'+key), n=$('n_'+key);
+  if (r) r.value=val;
+  if (n) n.value=val;
+  S[key]=val;
+}
+$('b_autoObs').addEventListener('click', ()=>{
+  const we_max = Math.max(Math.abs(S.Pn*S.wRef), S.Pn*20); // 至少 20 rad/s 机械
+  const eMax = S.psif * we_max;                              // 最大反电势
+  const L = (S.Ld+S.Lq)/2;
+  const bwCur = S.Kpi / L;                                    // 电流环带宽 rad/s
+  const fe = we_max / TAU;                                     // 电气频率 Hz
+
+  if (S.obsType === 'SMO'){
+    // k ≥ 2×eMax 余量, δ = 5%×iqMax, fLpf = clamp(3×fe, 50, 1500)
+    const k = Math.max(100, Math.round(eMax * 2.5 / 50)*50);
+    const d = Math.max(0.05, +(S.iqMax * 0.05).toFixed(1));
+    const f = clamp(Math.round(fe * 3), 50, 8000);
+    setUI('kSmo', clamp(k, 50, 50000));
+    setUI('dSmo', clamp(d, 0.01, 20));
+    setUI('fLpf', f);
+  }
+  else if (S.obsType === 'LUE'){
+    // ω_o = 2× 电流环带宽（不要 3× 避免过激），上限 15000
+    const wo = clamp(Math.round(bwCur * 2 / 50)*50, 100, 50000);
+    setUI('woLue', wo);
+  }
+  // 重置观测器状态
+  S.obs_ia=S.obs_ib=S.obs_ea=S.obs_eb=S.obs_th=S.obs_w=0;
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    if (b.disabled) return;
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    const id=b.dataset.tab;
+    $('panel'+id).classList.add('active');
+    S.tab=parseInt(id);
+  });
+});
+
+// Theme follow system once
+if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){
+  document.body.classList.add('dark');
+}
+
+// 鼠标悬停状态（per canvas）
+const MOUSE = {};  // canvasId -> {x, y, active}
+function trackMouse(id){
+  const c=$(id);
+  MOUSE[id]={x:0,y:0,active:false};
+  c.addEventListener('mousemove', e=>{
+    const r=c.getBoundingClientRect();
+    MOUSE[id].x = e.clientX - r.left;
+    MOUSE[id].y = e.clientY - r.top;
+    MOUSE[id].active = true;
+  });
+  c.addEventListener('mouseleave', ()=>{ MOUSE[id].active=false; });
+}
+trackMouse('cv_ts');
+trackMouse('cv_obs_ts');
+trackMouse('cv_fft');
+
+// Kick off
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+#ifndef __FOC_DRIVER_H__
+#define __FOC_DRIVER_H__
+
+#include "main.h"
+#include "pid.h"
+#include "math.h"
+#include "foc_calc.h"
+
+typedef enum
+{
+	mt_stop,		// 电机停止
+	mt_start,	 	// 电机初始化
+	mt_wait,		// 电机等待
+	mt_run,		 	// 电机运行
+	mt_precharge, 	// 电机预启动
+	mt_align,		// 预定位/强拖启动
+} mt_state_e;
+
+typedef enum
+{
+	dragvf_mode = 0,	   		// VF???
+	dragif_mode = 1,	   		// IF???
+	
+	volt_mode 	= 2,		   	// ???????
+	spd_volt  	= 3,			// ???-???
+	pos_volt 	= 4,		   	// λ??-???
+	pos_spd_volt= 5,		   	// λ??-???-???
+	
+	curr_mode 	= 6,	   	   	// ???????
+	spd_curr  	= 7,		   	// ???-????
+	pos_curr 	= 8,		   	// λ??-????
+	pos_spd_curr= 9,		   	// λ??-???-????
+	
+	mag_enc_cali= 10, 			// ???????У???
+	hall_cali	= 11,	   		// ????У???
+	
+	iden_para 	= 12,			// ??????????
+	
+	mode_num,
+} ctrl_mode_t;
+
+typedef struct
+{
+	float Rs; 		// ?????
+	float Ls; 		// ????
+	float flux;		// ????
+	uint8_t pairs;	// ??????
+	float Jx;		// ???????
+	float delta;	// ????????
+	float Tl;		// ???????
+	float Te;		// ??????
+	float Kt;		// ??????
+	float Ke;		// ???綯?????
+	float Tcoil;	// ??????		
+} mt_para_t;
+
+typedef struct
+{
+	float theta_acc; // ????????
+	float vd_set;	 // d ????????
+	float vq_set;	 // q ????????
+
+	float id_set;	 // d ?????????
+	float iq_set;	 // q ?????????
+	float iq_target; // q ????????
+	float iq_ramp;	 // ????б??(A/??)
+	float spd_set; 	// ???????
+	float new_spd; 	// ?????????
+	float spd_acc;	// ?????
+	float pos_set;	 // λ??????
+} mc_para_t;
+
+typedef struct
+{
+	uint8_t start_cnt;
+	uint8_t stop_cnt;
+	uint8_t cur_pid_cnt;
+	uint8_t spd_pid_cnt;
+	uint8_t pos_pid_cnt;
+	uint8_t spd_set_cnt;
+} period_t;
+
+typedef struct
+{
+	uint16_t ia;
+	uint16_t ib;
+	uint16_t ic;
+	
+	uint16_t vbus;
+	uint16_t Tmos;
+	uint16_t Tcoil;
+	
+	float ia_off;
+	float ib_off;
+	float ic_off;
+
+} mc_adc_val_t;
+
+typedef struct
+{
+	mt_state_e state;
+	ctrl_mode_t ctrl_mode;
+
+	period_t period;
+	mt_para_t para;
+
+} motor_ctrl_t;
+
+extern motor_ctrl_t mt;
+extern foc_para_t foc;
+extern mc_adc_val_t mc_adc;
+extern mc_para_t  mc;
+
+extern pid_para_t vq_pi;
+extern pid_para_t id_pi;
+extern pid_para_t iq_pi;
+extern pid_para_t spd_pi;
+extern pid_para_t pos_pi;
+
+void mt_foc_para_init(void);
+void foc_pwm_start(void);
+void foc_pwm_stop(void);
+void foc_pwm_run(foc_para_t *foc);
+void get_curr_off(void);
+
+#endif /* __FOC_DRIVER_H__ */

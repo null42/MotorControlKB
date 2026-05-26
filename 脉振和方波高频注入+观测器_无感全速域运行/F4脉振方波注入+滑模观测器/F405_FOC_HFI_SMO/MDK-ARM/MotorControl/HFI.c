@@ -1,0 +1,306 @@
+#include "FOC_Control.h"
+
+HFI_Cal				HFI = HFI_DEFAULTS;
+
+//HFI角度计算
+void HFI_Angle_Cale(p_HFI pv)
+{
+    //提取高频电流分量
+    pv->ialpha_h_last = pv->ialpha_h;
+    pv->ibeta_h_last = pv->ibeta_h;
+
+    pv->ialpha_h = (CLARKE_ICurr.Alpha - pv->Ialpha_last) * 0.5f;
+    pv->ibeta_h = (CLARKE_ICurr.Beta - pv->Ibeta_last) * 0.5f;
+    pv->ialpha_f = (CLARKE_ICurr.Alpha + pv->Ialpha_last) * 0.5f;
+    pv->ibeta_f = (CLARKE_ICurr.Beta + pv->Ibeta_last) * 0.5f;
+
+    pv->Ialpha_last = CLARKE_ICurr.Alpha;
+    pv->Ibeta_last = CLARKE_ICurr.Beta;
+
+    pv->SIGN = -Sign(pv->Uin);
+
+    //包络检测
+    pv->Ialpha_h = (pv->ialpha_h - pv->ialpha_h_last) * pv->SIGN;
+    pv->Ibeta_h = (pv->ibeta_h - pv->ibeta_h_last) * pv->SIGN;
+
+    PLL_Cale((p_PLL)&PLL_HFI_Para, -pv->Ibeta_h, pv->Ialpha_h);
+}
+//初始角度识别
+bool 	HFI_Uin_flag;
+
+void HFI_Init_Theta(void)
+{
+    static u16 		HFI_Clock = 0;
+    static float 	Sum_Id1 = 0;
+    static float 	Sum_Id2 = 0;
+
+    if(HFI_Init_Angle_flag == 0)
+        HFI_Clock ++;
+    HFI_Uin_flag = !HFI_Uin_flag;
+    //提取低频电流分量
+    HFI.Idf = (PARK_PCurr.Ds + HFI.Id_last) * 0.5f;
+    HFI.Iqf = (PARK_PCurr.Qs + HFI.Iq_last) * 0.5f;
+    //提取高频电流分量
+    HFI.Idh = (PARK_PCurr.Ds - HFI.Id_last) * 0.5f;
+
+    HFI.Id_last = PARK_PCurr.Ds;
+    HFI.Iq_last = PARK_PCurr.Qs;
+
+    if(HFI_Clock < 400)									//20ms，识别的初始电角度收敛
+    {
+        pi_id.Ref = 0;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+    }
+    else if(HFI_Clock == 400)						//初始电角度赋值
+    {
+        HFI.theta_Init = PLL_HFI_Para.Theta;		//初始角度赋值
+        pi_id.Ref = 0;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+    }
+    else if((HFI_Clock > 400) && (HFI_Clock <= 600))			//10ms,Id偏置电流注入
+    {
+        pi_id.Ref = HFI_Id_offset;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+    }
+    else if((HFI_Clock > 600) && (HFI_Clock <= 610))			//累计 高频电流分量*Id_offset
+    {
+        pi_id.Ref = HFI_Id_offset;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+        Sum_Id1 += my_abs(HFI.Idh * HFI_Id_offset);
+    }
+    else if((HFI_Clock > 610) && (HFI_Clock <= 800))		//10ms,Id偏执电流归零
+    {
+        pi_id.Ref = 0;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+    }
+    else if((HFI_Clock > 800) && (HFI_Clock <= 1000))		//10ms,Id负偏置电流注入
+    {
+        pi_id.Ref = -HFI_Id_offset;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+    }
+    else if((HFI_Clock > 1000) && (HFI_Clock <= 1010))		//累计 高频电流分量*Id_offset
+    {
+        pi_id.Ref = -HFI_Id_offset;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+        Sum_Id2 += my_abs(-HFI.Idh * HFI_Id_offset);
+    }
+    else if(HFI_Clock > 1010)															//初始角度识别结束，根据Sum_Id1&2大小判断收敛在N极还是S极
+    {
+        HFI_Init_Angle_flag = 1;
+        if(Sum_Id1 < Sum_Id2)																//收敛在S极，对角度进行补偿
+        {
+            HFI.theta_Init = PLL_HFI_Para.Theta + PI;
+            if(HFI.theta_Init > PIX2)
+                HFI.theta_Init -= PIX2;
+
+            PLL_HFI_Para.Theta = HFI.theta_Init;
+        }
+        Sum_Id1 = 0;
+        Sum_Id2 = 0;
+
+        pi_id.Ref = 0;
+        pi_id.Fbk = HFI.Idf;
+        PI_Controller((M_PI_Control)&pi_id);
+        HFI_Clock = 0;
+    }
+
+    //注入的高频方波电压
+    if(HFI_Uin_flag)
+        HFI.Uin = HFI_Uin_offset;
+    else
+        HFI.Uin = -HFI_Uin_offset;
+
+    //IPARK计算
+    IPARK_PVdq.Theta = PLL_HFI_Para.Theta;
+    IPARK_PVdq.Qs = 0;
+    IPARK_PVdq.Ds = pi_id.Out + HFI.Uin;				//d轴高频方波注入
+    IPARK_Cale((M_IPARK)&IPARK_PVdq);
+}
+
+//HFI速度闭环
+void HFI_Speed_Closeloop(void)
+{
+    float ISpeed_Ref_EX = 0.0f;
+    float outMax_V;
+
+    Speed_Ref_GXieLv.XieLv_Grad = Speed_Ref_OD ;   		//定义速度的梯度值
+    Speed_Ref_GXieLv.Grad_Timer = Speed_Ref_Timer;    //定义速度的梯度时间
+    Speed_Ref_GXieLv.XieLv_X = HFI_Speed;							//定义梯度上限，即速度环目标速度
+
+    if(HFI_Init_Angle_flag)
+    {
+        Speed_Ref_GXieLv.Timer_Count	++;
+        if(Speed_Ref_GXieLv.Timer_Count > Speed_Ref_GXieLv.Grad_Timer)
+        {
+            Speed_Ref_GXieLv.Timer_Count = 0;
+            Grad_XieLv((p_GXieLv)&Speed_Ref_GXieLv);				//梯度计算
+        }
+        ISpeed_Ref_EX = Limit_Sat(Speed_Ref_GXieLv.XieLv_Y, HFI_Speed_Ref_Max, -HFI_Speed_Ref_Max);
+    }
+
+    HFI_Uin_flag =	!HFI_Uin_flag;
+    //提取低频电流分量
+    HFI.Idf = (PARK_PCurr.Ds + HFI.Id_last) * 0.5f;
+    HFI.Iqf = (PARK_PCurr.Qs + HFI.Iq_last) * 0.5f;
+
+    HFI.Id_last = PARK_PCurr.Ds;
+    HFI.Iq_last = PARK_PCurr.Qs;
+
+    //速度环
+    if(Speed_Cal_time == Speed_Cal_Period)
+    {
+        Speed_Cal_time	%= Speed_Cal_Period;
+
+        pi_spd.Ref = ISpeed_Ref_EX * Motor.P;
+        pi_spd.Fbk = PLL_HFI_Para.Omega_F / PIX2 * 60;
+        PI_Controller((M_PI_Control)&pi_spd);												//速度环
+    }
+
+    //电流环
+    pi_id.Ref = 0;
+    pi_id.Fbk = HFI.Idf;
+    PI_Controller((M_PI_Control)&pi_id);
+
+    //防止过调制
+    float maxVsMag_V = MaxVsMagPu * ADC_Sample_F_Para.VBUS;
+    outMax_V = maxVsMag_V * maxVsMag_V -  pi_id.Out *  pi_id.Out;
+    arm_sqrt_f32(outMax_V, &outMax_V);
+
+    //Iq轴闭环
+    pi_iq.Umax = 	outMax_V;
+    pi_iq.Umin = -outMax_V;
+    pi_iq.Ref = pi_spd.Out;
+    pi_iq.Fbk = HFI.Iqf;
+    PI_Controller((M_PI_Control)&pi_iq);
+
+    //d轴注入的高频方波电压
+    if(HFI_Uin_flag)
+        HFI.Uin = HFI_Uin_offset;
+    else
+        HFI.Uin = -HFI_Uin_offset;
+
+    //IPARK计算
+    IPARK_PVdq.Theta = PLL_HFI_Para.Theta;
+    IPARK_PVdq.Qs = pi_iq.Out;
+    IPARK_PVdq.Ds = pi_id.Out + HFI.Uin;
+    IPARK_Cale((M_IPARK)&IPARK_PVdq);
+}
+//提取低频电流分量
+void extract_Idq_f(void)
+{
+    HFI.Idf = (PARK_PCurr.Ds + HFI.Id_last) * 0.5f;
+    HFI.Iqf = (PARK_PCurr.Qs + HFI.Iq_last) * 0.5f;
+
+    HFI.Id_last = PARK_PCurr.Ds;
+    HFI.Iq_last = PARK_PCurr.Qs;
+}
+
+//HFI速度环，全速度无感控制用
+void HFI_Observer(float Id, float Iq)
+{
+    float outMax_V;
+
+    HFI_Uin_flag = !HFI_Uin_flag;
+
+    //速度环
+    if(Speed_Cal_time == Speed_Cal_Period)
+    {
+        pi_spd.Ref = Sensorless.Speed_Ref;
+        pi_spd.Fbk = Sensorless.Speed_Fbk;
+        PI_Controller((M_PI_Control)&pi_spd);												//速度环
+    }
+
+    //电流环
+    pi_id.Ref = 0;
+    pi_id.Fbk = Id;
+    PI_Controller((M_PI_Control)&pi_id);
+
+    //防止过调制
+    float maxVsMag_V = MaxVsMagPu * ADC_Sample_F_Para.VBUS;
+    outMax_V = maxVsMag_V * maxVsMag_V -  pi_id.Out *  pi_id.Out;
+    arm_sqrt_f32(outMax_V, &outMax_V);
+
+    //Iq轴闭环
+    pi_iq.Umax = 	outMax_V;
+    pi_iq.Umin = -outMax_V;
+    pi_iq.Ref = pi_spd.Out;
+    pi_iq.Fbk = Iq;
+    PI_Controller((M_PI_Control)&pi_iq);
+
+    //d轴注入的高频方波电压
+    if(HFI_Uin_flag)
+        HFI.Uin = HFI_Uin_offset;
+    else
+        HFI.Uin = -HFI_Uin_offset;
+
+    //IPARK计算
+    IPARK_SMO_PVdq.Theta = Sensorless.theta;
+    IPARK_SMO_PVdq.Ds = pi_id.Out;
+    IPARK_SMO_PVdq.Qs = pi_iq.Out;
+    IPARK_Cale((M_IPARK)&IPARK_SMO_PVdq);
+
+    //IPARK计算
+    IPARK_PVdq.Theta = Sensorless.theta;
+    IPARK_PVdq.Qs = pi_iq.Out;
+    IPARK_PVdq.Ds = pi_id.Out + HFI.Uin;
+    IPARK_Cale((M_IPARK)&IPARK_PVdq);
+}
+
+//高频脉振方波输入
+void HFI_Injection(void)
+{
+    float IF_Freq_EX = 0.0f;
+
+    HFI_Uin_flag = !HFI_Uin_flag;
+    //提取低频电流分量
+    HFI.Idf = (PARK_PCurr.Ds + HFI.Id_last) * 0.5f;
+    HFI.Iqf = (PARK_PCurr.Qs + HFI.Iq_last) * 0.5f;
+
+    HFI.Id_last = PARK_PCurr.Ds;
+    HFI.Iq_last = PARK_PCurr.Qs;
+
+
+    IF_Freq_GXieLv.XieLv_Grad = IF_F_Grad_0D1HZ ;   //定义频率的梯度值
+    IF_Freq_GXieLv.Grad_Timer = IF_F_Grad_Timer;    //定义频率的梯度时间
+    IF_Freq_GXieLv.XieLv_X = IF_Fre_Max;								//定义梯度上限
+
+    IF_Freq_GXieLv.Timer_Count ++;
+    if(IF_Freq_GXieLv.Timer_Count > IF_Freq_GXieLv.Grad_Timer)
+    {
+        IF_Freq_GXieLv.Timer_Count = 0;
+        Grad_XieLv((p_GXieLv)&IF_Freq_GXieLv);				//梯度计算
+    }
+
+    IF_Freq_EX = Limit_Sat(IF_Freq_GXieLv.XieLv_Y, Motor_Freq_Max, Motor_Freq_Min);
+    IF_Theta += (float)(PIX2 * IF_Freq_EX) / TIM1_Frq;
+    if(IF_Theta >= PIX2)
+        IF_Theta -= PIX2;
+
+    //电流环
+    pi_id.Ref = 0;
+    pi_id.Fbk = HFI.Idf;
+    PI_Controller((M_PI_Control)&pi_id);
+    //Iq轴闭环
+    pi_iq.Ref = 2.0f;
+    pi_iq.Fbk = HFI.Iqf;
+    PI_Controller((M_PI_Control)&pi_iq);
+
+    if(HFI_Uin_flag)
+        HFI.Uin = HFI_Uin_offset;
+    else
+        HFI.Uin = -HFI_Uin_offset;
+
+    //IPARK计算
+    IPARK_PVdq.Theta = IF_Theta;
+    IPARK_PVdq.Qs = pi_iq.Out;
+    IPARK_PVdq.Ds = pi_id.Out + HFI.Uin;
+    IPARK_Cale((M_IPARK)&IPARK_PVdq);
+}
+

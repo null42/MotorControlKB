@@ -1,0 +1,32 @@
+********************************************************************************
+TMS320C2000 Hex Converter                                                v16.9.0
+********************************************************************************
+
+INPUT FILE NAME: <hf_motordrive.out>
+OUTPUT FORMAT:   Intel
+
+PHYSICAL MEMORY PARAMETERS
+   Default data width   :  16
+   Default memory width :  16
+   Default output width :  16
+
+
+OUTPUT TRANSLATION MAP
+--------------------------------------------------------------------------------
+00000000..003fffff  Page=0  Memory Width=16  ROM Width=16
+--------------------------------------------------------------------------------
+   OUTPUT FILES: hf_motordrive.hex [b0..b15]
+
+   CONTENTS: 003eb000..003ecf16   hf_motordrive.out(.text) Data Width=2   
+             003f0000..003f0ad6   hf_motordrive.out(ramfuncs) Data Width=2   
+             003f0ad7..003f0c55   hf_motordrive.out(IQmath) Data Width=2   
+             003f2000..003f2163   hf_motordrive.out(.econst) Data Width=2   
+             003f6000..003f6233   hf_motordrive.out(.cinit) Data Width=2   
+             003f7f80..003f7ff5   hf_motordrive.out(csm_rsvd) Data Width=2   
+             003f7ff6..003f7ff7   hf_motordrive.out(codestart) Data Width=2   
+             003f7ff8..003f7fff   hf_motordrive.out(csmpasswds) Data Width=2   
+
+--------------------------------------------------------------------------------
+00000000..003fffff  Page=1  Memory Width=16  ROM Width=16  "*DEFAULT PAGE 1*"
+--------------------------------------------------------------------------------
+   NO CONTENTS
