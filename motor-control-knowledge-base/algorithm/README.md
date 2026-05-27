@@ -6,21 +6,37 @@
 
 ## 学习路径总览
 
-```text
-层次1: 理论基础
-ALG-01 FOC理论（含Clarke-Park） → ALG-02 电流采样时序 → ALG-03 PI电流调节器 → ALG-04 死区补偿
-                    ↓
-层次2: 工程实现
-ALG-05 有感FOC实现 → ALG-06 位置与速度观测器
-                    ↓
-层次3: 无感控制
-ALG-07 无感FOC观测器 → ALG-08 启动定位 → ALG-09 高频注入
-                    ↓
-层次4: 高级优化
-ALG-10 过调制 → ALG-11 MTPA弱磁 → ALG-12 速度环转矩观测器
-                    ↓
-层次5: 工程完善
-ALG-13 保护与优化 → ALG-14 THD谐波分析 → ALG-15 前沿研究
+```mermaid
+flowchart TD
+    subgraph 层次1_理论基础
+        A1[ALG-01 FOC理论 含Clarke-Park] --> A2[ALG-02 电流采样时序]
+        A2 --> A3[ALG-03 PI电流调节器]
+        A3 --> A4[ALG-04 死区补偿]
+    end
+
+    subgraph 层次2_工程实现
+        B1[ALG-05 有感FOC实现] --> B2[ALG-06 位置与速度观测器]
+    end
+
+    subgraph 层次3_无感控制
+        C1[ALG-07 无感FOC观测器] --> C2[ALG-08 启动定位]
+        C2 --> C3[ALG-09 高频注入]
+    end
+
+    subgraph 层次4_高级优化
+        D1[ALG-10 过调制] --> D2[ALG-11 MTPA弱磁]
+        D2 --> D3[ALG-12 速度环转矩观测器]
+    end
+
+    subgraph 层次5_工程完善
+        E1[ALG-13 保护与优化] --> E2[ALG-14 THD谐波分析]
+        E2 --> E3[ALG-15 前沿研究]
+    end
+
+    层次1_理论基础 --> 层次2_工程实现
+    层次2_工程实现 --> 层次3_无感控制
+    层次3_无感控制 --> 层次4_高级优化
+    层次4_高级优化 --> 层次5_工程完善
 ```
 
 ---

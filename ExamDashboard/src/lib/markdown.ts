@@ -21,6 +21,26 @@ const mdOptions: MarkdownItOptions = {
 
 const md = new MarkdownIt(mdOptions)
 
+const defaultFenceRenderer = md.renderer.rules.fence ||
+  function (tokens, idx, options, _env, self) {
+    return self.renderToken(tokens, idx, options)
+  }
+
+md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  const token = tokens[idx]
+  const info = token.info ? token.info.trim() : ''
+  if (info === 'mermaid') {
+    const code = token.content.trim()
+    const escapedCode = code
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+    return `<div class="mermaid-src">${escapedCode}</div>`
+  }
+  return defaultFenceRenderer(tokens, idx, options, env, self)
+}
+
 const renderKatex = (tex: string, displayMode: boolean): string => {
   try {
     return katex.renderToString(tex.trim(), {

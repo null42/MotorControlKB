@@ -186,6 +186,11 @@ CT_ORDER = [
     "CT-11-Observer-Design",
     "CT-12-State-Feedback",
     "CT-13-LQR-LQG",
+    "CT-14-Cascaded-PID-Control",
+    "CT-15-PID-Optimization-Strategies",
+    "CT-16-ADRC-Theory",
+    "CT-17-LADRC-Linear-ADRC",
+    "CT-18-ADRC-LADRC-Implementation",
 ]
 
 CT_TITLES = {
@@ -202,6 +207,11 @@ CT_TITLES = {
     "CT-11-Observer-Design": "CT-11 观测器设计",
     "CT-12-State-Feedback": "CT-12 状态反馈与极点配置",
     "CT-13-LQR-LQG": "CT-13 最优控制（LQR/LQG）",
+    "CT-14-Cascaded-PID-Control": "CT-14 三环级联PID控制",
+    "CT-15-PID-Optimization-Strategies": "CT-15 PID优化策略与工程增强",
+    "CT-16-ADRC-Theory": "CT-16 ADRC自抗扰控制理论",
+    "CT-17-LADRC-Linear-ADRC": "CT-17 LADRC线性自抗扰控制",
+    "CT-18-ADRC-LADRC-Implementation": "CT-18 ADRC/LADRC工程实现",
 }
 
 

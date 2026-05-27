@@ -79,11 +79,11 @@
 
 **生活场景**：想象一个水龙头（MOSFET栅极）控制一个高压水泵（BJT集电极）。
 
-```
-控制信号(栅极电压Vge) ──→ [MOSFET栅极] ──→ [BJT基极电流] ──→ [集电极大电流]
-         │                      │                    │                   │
-    只需小电压              电压控制            电流驱动            负载电流
-    几乎零功率              绝缘栅              控制端              功率端
+```mermaid
+flowchart LR
+    A["控制信号(栅极电压Vge)"] --> B["MOSFET栅极"]
+    B --> C["BJT基极电流"]
+    C --> D["集电极大电流"]
 ```
 
 **关键理解**：
@@ -93,11 +93,12 @@
 
 ### 类比2：拖尾电流就像"关门后还在滴水的水龙头"
 
-```
-关断指令 ──→ 栅极放电 ──→ MOSFET沟道关闭 ──→ BJT少子复合 ──→ 电流归零
-   │             │              │               │             │
-  t=0       t=0.5μs        t=1μs         t=2~5μs       t=6μs+
-                                       ↑ 这就是拖尾电流(tail current)
+```mermaid
+flowchart LR
+    A["关断指令"] --> B["栅极放电"]
+    B --> C["MOSFET沟道关闭"]
+    C --> D["BJT少子复合"]
+    D --> E["电流归零"]
 ```
 
 **生活场景**：拧紧水龙头后，水管里残留的水还会流一会儿。IGBT关断时，BJT基区存储的少数载流子需要时间复合消失，这期间电流无法立即归零 → 产生可观的关断损耗。
@@ -123,59 +124,40 @@
 
 #### 4.1.1 基本结构：从MOSFET到IGBT
 
-```
-MOSFET（VDMOS）结构：          IGBT基本结构：
-        Source                       Emitter
-         │                            │
-    ┌────┴────┐                  ┌────┴────┐
-    │ P-body  │                  │ P-body  │
-    │  (沟道)  │                  │  (沟道)  │
-    ├─────────┤                  ├─────────┤
-    │  N-漂移区 │ (决定耐压)       │  N-漂移区 │
-    │          │                  │          │
-    ├─────────┤                  ├─────────┤
-    │  N+衬底  │  ← 此处不同！     │  P+集电区 │ ← 关键差异！
-    └────┬────┘                  └────┬────┘
-        Drain                        Collector
+```mermaid
+flowchart TD
+    subgraph MOSFET结构["MOSFET（VDMOS）结构"]
+        MS["Source"] --> MP["P-body(沟道)"]
+        MP --> MN["N-漂移区(决定耐压)"]
+        MN --> MD["N+衬底 → Drain"]
+    end
+    subgraph IGBT结构["IGBT基本结构"]
+        IE["Emitter"] --> IP["P-body(沟道)"]
+        IP --> IN["N-漂移区"]
+        IN --> IC["P+集电区 → Collector"]
+    end
 ```
 
 **核心差异**：IGBT将MOSFET的N+漏极衬底替换为P+集电区，多了一个PN结 → 形成PNP晶体管。
 
 #### 4.1.2 NPT（非穿通型）IGBT
 
-```
-NPT IGBT结构：
-    Emitter (N+)
-    ├─ P-base (沟道)
-    ├─ N-drift (厚，低掺杂)  ← 整个漂移区承担耐压
-    ├─ N-buffer (可选)
-    └─ P+ Collector (透明集电极)
-
-特点：
-- 电场在N-drift区呈三角形分布，到P+集电区边界降为零
-- 少数载流子注入效率低 → 拖尾电流小 → 关断快
-- Vce(sat)较高（2.5~3.5V），但正温度系数 → 易于并联
+```mermaid
+flowchart TD
+    E["Emitter N+"] --> PB["P-base 沟道"]
+    PB --> ND["N-drift 厚,低掺杂"]
+    ND --> NB["N-buffer 可选"]
+    NB --> PC["P+ Collector 透明集电极"]
 ```
 
 #### 4.1.3 FS（场截止型）IGBT ★★★ 现代主流
 
-```
-FS IGBT（Field Stop IGBT）结构：
-    Emitter (N+)
-    ├─ P-base (沟道)
-    ├─ N-drift (薄，中掺杂)    ← 漂移区显著减薄！
-    ├─ N-Field Stop层 (高掺杂)  ← 电场在此被"截止"
-    └─ P+ Collector (高注入效率)
-
-优点：
-- 漂移区厚度减半 → Vce(sat)降低至1.5~2.0V → 导通损耗降低40%+
-- 更高的少数载流子注入效率 → 正向压降更低
-- 拖尾电流适中（优于PT，略差于NPT）→ 通过寿命控制优化
-
-工程意义：
-  5kW伺服，Vce(sat)从3V降到1.8V：
-  导通损耗 = Ic × Vce(sat) = 20A × 1.8V = 36W（原来60W）
-  节省24W → 散热器减小40%
+```mermaid
+flowchart TD
+    E["Emitter N+"] --> PB["P-base 沟道"]
+    PB --> ND["N-drift 薄,中掺杂"]
+    ND --> FS["N-Field Stop层 高掺杂"]
+    FS --> PC["P+ Collector 高注入效率"]
 ```
 
 #### 4.1.4 IGBT结构总结
@@ -250,24 +232,12 @@ Vce ────────────────────┐   Vce ──
 
 #### 4.2.3 拖尾电流机制 ★★★ 核心概念
 
-```
-拖尾电流的物理机制：
-
-关断前：
-  N-drift区充满电子和空穴（电导调制效应）
-  ↓
-Vge关断：
-  MOS沟道立即关闭 → 电子注入停止
-  ↓
-  但N-drift区存储了大量少数载流子（空穴）！
-  ↓
-复合阶段（拖尾）：
-  空穴必须与电子复合或漂移到集电极
-  这个过程需要1~5μs（取决于载流子寿命）
-  ↓
-拖尾电流导致的关断损耗：
-  E_off(tail) = ∫ Vce(t) × Ic(tail)(t) dt
-  这部分可能占总关断损耗的40~60%！
+```mermaid
+flowchart TD
+    A["关断前：N-drift区充满电子和空穴(电导调制效应)"] --> B["Vge关断：MOS沟道立即关闭,电子注入停止"]
+    B --> C["但N-drift区存储了大量少数载流子(空穴)!"]
+    C --> D["复合阶段(拖尾)：空穴必须与电子复合或漂移到集电极"]
+    D --> E["拖尾电流导致关断损耗：E_off(tail) = ∫ Vce(t) × Ic(tail)(t) dt"]
 ```
 
 ### 4.3 IGBT损耗计算
@@ -458,16 +428,11 @@ IPM(智能功率模块)：
 
 ### 5.1 IGBT开关频率 → FOC电流环带宽
 
-```
-电流环带宽约束链：
-  ADC采样率 → PWM频率 → IGBT开关频率上限 → 电流环带宽
-
-  f_pwm_max_IGBT ≈ 16kHz（考虑开关损耗和散热）
-  f_pwm = f_sw = 16kHz
-  f_current_loop_bw < f_pwm / 10 = 1.6kHz
-
-  ★ 如果用了8kHz IGBT，电流环带宽<800Hz
-  ★ 这对于需要>1kHz速度环带宽的高性能伺服是不够的！
+```mermaid
+flowchart LR
+    A["ADC采样率"] --> B["PWM频率"]
+    B --> C["IGBT开关频率上限"]
+    C --> D["电流环带宽"]
 ```
 
 ### 5.2 死区时间 → 电流波形畸变
@@ -690,20 +655,15 @@ PWM频率：16kHz（为提高电流环带宽）
 ```
 
 **解决方案**：
-```
-硬件DESAT检测电路（去饱和检测）：
-
-IGBT集电极 ──┤>├──┬─── R_lim ────→ 比较器 ──→ 关断栅极驱动
-            高压   │                   ↑
-            二极管  ├── C_blk ───R───┤ Vref(9V)
-                   │                
-IGBT发射极 ───────┴── GND
-
-工作原理：
-  正常导通：Vce=Vce(sat)≈2V → 二极管导通 → 检测点电压≈2V+Vf≈3V → <9V，不触发
-  短路时：Vce急剧上升 > Vdc/2 → 二极管截止 → C_blk充电 >9V → 2μs内触发关断!
-  
-  响应时间：<2μs（远小于IGBT的6μs短路耐受!）✅
+```mermaid
+flowchart LR
+    IGBT_C["IGBT集电极"] --> DHV["高压二极管"]
+    DHV --> Rlim["R_lim 限流电阻"]
+    Rlim --> CMP["比较器"]
+    CMP --> OFF["关断栅极驱动"]
+    DHV --> Cblk["C_blk 消隐电容"]
+    Cblk --> CMP
+    IGBT_E["IGBT发射极 GND"] --> DHV
 ```
 
 **经验总结**：

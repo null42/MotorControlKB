@@ -136,20 +136,22 @@ Boost 类似：
 #### 4.1.1 工作模态
 
 **模态1：开关管导通（0 ~ D×T）**
+```mermaid
+flowchart LR
+    Vin["Vin"] --> MOSFET["MOSFET 导通"] --> L["L"] --> Cout["Cout//Rload"] --> GND["GND"]
 ```
-Vin → MOSFET(ON) → L → Cout//Rload → GND
 
 电感电压：VL = Vin - Vout
 电感电流上升斜率：diL/dt = (Vin - Vout) / L
-```
 
 **模态2：开关管关断（D×T ~ T）**
+```mermaid
+flowchart LR
+    L["L"] --> Cout["Cout//Rload"] --> Diode["二极管 续流"] --> L
 ```
-L → Cout//Rload → 二极管(续流) → L
 
 电感电压：VL = -Vout（忽略二极管压降）
 电感电流下降斜率：diL/dt = -Vout / L
-```
 
 #### 4.1.2 伏秒平衡推导电压增益
 
@@ -275,20 +277,24 @@ $$
 #### 4.2.1 工作模态与电压增益
 
 **模态1：开关管导通**
+```mermaid
+flowchart LR
+    Vin["Vin"] --> L["L"] --> MOSFET["MOSFET 导通"] --> GND["GND"]
 ```
-Vin → L → MOSFET(ON) → GND
+
 电感充电，输出电容向负载供电
 VL = Vin
 diL/dt = Vin/L（电流上升）
-```
 
 **模态2：开关管关断**
+```mermaid
+flowchart LR
+    Vin["Vin"] --> L["L"] --> Diode["二极管"] --> Cout["Cout//Rload"] --> GND["GND"]
 ```
-Vin → L → 二极管 → Cout//Rload → GND
+
 电感放电，输入+电感能量共同向输出供电
 VL = Vin - Vout（为负值，电流下降）
 diL/dt = (Vin - Vout)/L（电流下降）
-```
 
 伏秒平衡：
 
@@ -354,18 +360,22 @@ $$
 Buck-Boost 是 Buck 和 Boost 的级联变体：
 
 **模态1：开关管导通**
-```
-Vin → MOSFET(ON) → L → GND
-电感充电，输出电容向负载供电
-VL = Vin
+```mermaid
+flowchart LR
+    Vin["Vin"] --> MOSFET["MOSFET 导通"] --> L["L"] --> GND["GND"]
 ```
 
+电感充电，输出电容向负载供电
+VL = Vin
+
 **模态2：开关管关断**
+```mermaid
+flowchart LR
+    L["L"] --> Diode["二极管"] --> Cout["Cout//Rload"] --> L
 ```
-L → 二极管 → Cout//Rload → L
+
 电感向输出释放能量（电流方向与输入相反！）
 VL = Vout（Vout 为负值）
-```
 
 伏秒平衡：
 
@@ -399,8 +409,9 @@ $$
 
 #### 4.4.1 电压模式控制（VMC）
 
-```
-Vout → 分压 → 误差放大器 → 比较器（vs 锯齿波）→ PWM → MOSFET
+```mermaid
+flowchart LR
+    Vout["Vout"] --> Div["分压"] --> EA["误差放大器"] --> Comp["比较器 vs 锯齿波"] --> PWM["PWM"] --> MOSFET["MOSFET"]
 ```
 
 - **优点**：简单，单环路
@@ -413,8 +424,9 @@ $$
 
 #### 4.4.2 电流模式控制（CMC / Peak Current Mode）
 
-```
-I_L → 采样 → 比较器（vs 误差放大器输出）→ PWM → MOSFET
+```mermaid
+flowchart LR
+    IL["I_L 采样"] --> Comp["比较器 vs 误差放大器输出"] --> PWM["PWM"] --> MOSFET["MOSFET"]
 ```
 
 - **优点**：电感电流内环将 LC 双极点降为单极点（补偿简化），逐周期限流，输入电压前馈
@@ -430,16 +442,14 @@ I_L → 采样 → 比较器（vs 误差放大器输出）→ PWM → MOSFET
 
 电机驱动器需要多路隔离/非隔离电源：
 
-```
-310V DC 母线
-    │
-    ├── Buck (非隔离) → 15V → 栅极驱动 IC
-    │                    │
-    │                    └── LDO → 5V → MCU
-    │                         │
-    │                         └── LDO → 3.3V → 传感器
-    │
-    └── Flyback (隔离) → 隔离 15V（上桥臂栅极驱动）
+```mermaid
+flowchart TD
+    Bus["310V DC 母线"] --> Buck["Buck 非隔离"]
+    Bus --> Flyback["Flyback 隔离"]
+    Buck --> V15["15V → 栅极驱动 IC"]
+    V15 --> LDO5["LDO → 5V → MCU"]
+    LDO5 --> LDO33["LDO → 3.3V → 传感器"]
+    Flyback --> ISO15["隔离 15V 上桥臂栅极驱动"]
 ```
 
 **选型要点**：

@@ -42,35 +42,18 @@
 
 ### 1.2 目标应用场景分解
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                            ODrive vs VESC 应用场景叉积图                              │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                     精度要求                         │
-│                                                      ↑                              │
-│                                            ODrive    │                              │
-│                                         (CNC/机器人)  │                              │
-│                                                      │                              │
-│                                                      │                              │
-│                                                      │         VESC                 │
-│                                                      │    (电动滑板/自行车)           │
-│                                                      │                              │
-│  ────────────────────────────────────────────────────┼─────────────────────→ 速度范围 │
-│                                                      │                              │
-│                                                      │                              │
-│                                                      │                              │
-│                                                      │                              │
-│                                                      │                              │
-│                                                            VESC                     │
-│                                                         (电动车/轻型EV)               │
-│                                                      │                              │
-│                                                      ↓                              │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-
-图例：
-  ODrive 核心区：高精度定位 + 中速范围 → 伺服定位、机器人关节、CNC加工
-  VESC 核心区：宽速度范围 + 骑行体验 → 电动滑板、电动自行车、轻型电动车
-  重叠区：两者均可胜任（如通用BLDC驱动），但设计哲学差异导致优化方向不同
+```mermaid
+quadrantChart
+    title ODrive vs VESC 应用场景叉积图
+    x-axis 低速度范围 --> 高速度范围
+    y-axis 低精度要求 --> 高精度要求
+    quadrant-1 高精度高速度
+    quadrant-2 高精度低速度
+    quadrant-3 低精度低速度
+    quadrant-4 低精度高速度
+    ODrive: [0.4, 0.85]
+    VESC_Board: [0.8, 0.3]
+    VESC_EV: [0.7, 0.15]
 ```
 
 ### 1.3 设计哲学根本差异
@@ -91,50 +74,41 @@
 
 ### 2.1 整体架构拓扑图
 
-```
-┌──────────────────────────────────── ODrive C++ 组件化架构 ────────────────────────────────┐
-│                                                                                          │
-│   ODrive (Application)                                                                   │
-│   ├── usb_thread          (USB CDC通信)                                                   │
-│   ├── can_thread          (CAN通信)                                                       │
-│   ├── uart_thread         (UART通信)                                                      │
-│   ├── axis_thread[0..N]   (每个轴独立线程)                                                 │
-│   │   ├── Axis[N]                                                                        │
-│   │   │   ├── Motor        (电机参数 R,L,极对数)                                          │
-│   │   │   ├── Controller   (位置环←速度环←电流环)                                          │
-│   │   │   ├── FOC          (Clarke→Park→PI→SVM)                                          │
-│   │   │   ├── Encoder      (ABI/SPI/Hall/SinCos)                                         │
-│   │   │   ├── SensorlessEstimator (磁链观测器)                                            │
-│   │   │   ├── TrapezoidalTrajectory (位置规划)                                            │
-│   │   │   └── MechanicalBrake                                                                 │
-│   │   └── OutputPort/InputPort 数据流管道                                                 │
-│   └── System (GPIO/PWM/TIMER/ADC)                                                        │
-│                                                                                          │
-│   数据流：OutputPort(生产者) → InputPort(消费者)，组件间松耦合                              │
-│                                                                                          │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-
-
-┌──────────────────────────────── VESC C 集中式架构 ───────────────────────────────────────┐
-│                                                                                          │
-│   Main Thread (ChibiOS)                                                                  │
-│   ├── mc_interface       (统一API入口——处理所有命令/状态)                                  │
-│   │   ├── mc_configuration  (所有配置的单一结构体, 500+ bytes, CRC保护)                    │
-│   │   ├── motor_all_state_t (所有运行状态的单一结构体, 100+ fields)                        │
-│   │   └── command dispatch  (160+ 命令处理器)                                             │
-│   ├── mcpwm (BLDC六步换相) / mcpwm_foc (FOC矢量控制)                                      │
-│   │   ├── current        (电流采样/滤波/偏置校准)                                          │
-│   │   ├── foc            (Clarke→Park→PI→SVM→逆Park→逆Clarke)                            │
-│   │   ├── observer       (6种观测器可选 + HFI 5种变体)                                    │
-│   │   ├── encoder        (14种编码器接口)                                                 │
-│   │   └── speed_pos      (速度/位置计算 + PLL + 混合融合)                                  │
-│   ├── timer ISR (核心控制在定时器中断中执行，PWM同步触发)                                   │
-│   ├── comm_thread        (UART/USB/CAN/NRF通信)                                           │
-│   └── terminal_thread    (VESC终端调试)                                                   │
-│                                                                                          │
-│   数据流：全局结构体直接访问，函数调用链深（mc_interface→mcpwm_foc→foc→PWM）                │
-│                                                                                          │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ODriveArch["ODrive C++ 组件化架构"]
+        ODriveApp["ODrive Application"]
+        ODriveApp --> USBThread["usb_thread USB CDC通信"]
+        ODriveApp --> CANThread["can_thread CAN通信"]
+        ODriveApp --> UARTThread["uart_thread UART通信"]
+        ODriveApp --> AxisThread["axis_thread 0..N 每个轴独立线程"]
+        AxisThread --> AxisN["Axis N"]
+        AxisN --> MotorOD["Motor 电机参数R,L,极对数"]
+        AxisN --> ControllerOD["Controller 位置环←速度环←电流环"]
+        AxisN --> FOCOD["FOC Clarke→Park→PI→SVM"]
+        AxisN --> EncoderOD["Encoder ABI/SPI/Hall/SinCos"]
+        AxisN --> SensorlessOD["SensorlessEstimator 磁链观测器"]
+        AxisN --> TrajOD["TrapezoidalTrajectory 位置规划"]
+        AxisN --> BrakeOD["MechanicalBrake"]
+        AxisThread --> PortsOD["OutputPort/InputPort 数据流管道"]
+        ODriveApp --> SystemOD["System GPIO/PWM/TIMER/ADC"]
+    end
+    subgraph VESCArch["VESC C 集中式架构"]
+        MainThread["Main Thread ChibiOS"]
+        MainThread --> McIf["mc_interface 统一API入口"]
+        McIf --> McConf["mc_configuration 所有配置单一结构体 500+ bytes CRC保护"]
+        McIf --> MotorState["motor_all_state_t 所有运行状态单一结构体 100+ fields"]
+        McIf --> CmdDispatch["command dispatch 160+命令处理器"]
+        MainThread --> Mcpwm["mcpwm BLDC六步换相 / mcpwm_foc FOC矢量控制"]
+        Mcpwm --> CurVESC["current 电流采样/滤波/偏置校准"]
+        Mcpwm --> FocVESC["foc Clarke→Park→PI→SVM→逆Park→逆Clarke"]
+        Mcpwm --> ObserverVESC["observer 6种观测器+HFI 5种变体"]
+        Mcpwm --> EncoderVESC["encoder 14种编码器接口"]
+        Mcpwm --> SpeedPosVESC["speed_pos 速度/位置计算+PLL+混合融合"]
+        MainThread --> TimerISR["timer ISR 核心控制在定时器中断中执行"]
+        MainThread --> CommThread["comm_thread UART/USB/CAN/NRF通信"]
+        MainThread --> TerminalThread["terminal_thread VESC终端调试"]
+    end
 ```
 
 ### 2.2 线程模型对比

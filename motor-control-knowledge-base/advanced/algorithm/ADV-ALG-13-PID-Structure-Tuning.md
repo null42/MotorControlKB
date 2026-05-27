@@ -17,15 +17,16 @@
 
 **核心问题链：**
 
-```
-PID有哪些结构？       → 串联型 vs 并联型，位置式 vs 增量式
-结构怎么选？          → 电机控制用并联型+位置式（电流环/速度环）
-积分饱和怎么办？      → Back-calculation + 积分限幅双重保护
-参考突变引起冲击？    → 二自由度PID，微分项不看参考
-电流环PI怎么整定？    → 零极点对消法，Ki/Kp = R/L
-速度环PI怎么整定？    → 对称最优法，穿越频率=几何中点
-参数偏差影响多大？    → 电感偏差最致命，±30%偏差需仍稳定
-能自动整定吗？        → 阶跃响应法辨识R/L，在线自适应微调
+```mermaid
+flowchart TD
+    A["PID有哪些结构?"] --> B["串联型 vs 并联型 位置式 vs 增量式"]
+    C["结构怎么选?"] --> D["电机控制用并联型+位置式 电流环/速度环"]
+    E["积分饱和怎么办?"] --> F["Back-calculation + 积分限幅双重保护"]
+    G["参考突变引起冲击?"] --> H["二自由度PID 微分项不看参考"]
+    I["电流环PI怎么整定?"] --> J["零极点对消法 Ki/Kp = R/L"]
+    K["速度环PI怎么整定?"] --> L["对称最优法 穿越频率=几何中点"]
+    M["参数偏差影响多大?"] --> N["电感偏差最致命 ±30%偏差需仍稳定"]
+    O["能自动整定吗?"] --> P["阶跃响应法辨识R/L 在线自适应微调"]
 ```
 
 **PID结构选择速查表：**
@@ -454,14 +455,13 @@ float position_loop_incremental(pid_t *pid, float ref, float fdb)
 
 **问题场景：** 电机启动时，速度给定从0阶跃到额定转速，速度环误差很大。速度环PI控制器输出（电流给定 $i_q^*$）迅速达到限幅值（额定电流），但误差仍然存在，积分项继续累积。
 
-```
-时间轴：
-t0: 给定阶跃，误差很大
-t1: PI输出饱和（i_q* = I_max），积分项继续增大
-t2: 电机加速，速度接近给定，误差减小
-t3: 误差过零（速度超过给定），积分项才开始减小
-t4: 积分项终于退到限幅以下，PI输出才恢复正常
-    ↑ 这段时间就是"退饱和延迟"——速度超调的根源！
+```mermaid
+flowchart TD
+    T0["t0: 给定阶跃 误差很大"] --> T1["t1: PI输出饱和 i_q*=I_max 积分项继续增大"]
+    T1 --> T2["t2: 电机加速 速度接近给定 误差减小"]
+    T2 --> T3["t3: 误差过零 速度超过给定 积分项才开始减小"]
+    T3 --> T4["t4: 积分项终于退到限幅以下 PI输出才恢复正常"]
+    T4 --> Note["这段时间就是退饱和延迟 速度超调的根源!"]
 ```
 
 **定量分析：** 假设积分项累积到 $I_{accum}$（远大于限幅值），退饱和需要的时间：
@@ -605,17 +605,15 @@ float back_calc_pid_calc(pid_t *pid, float ref, float fdb)
 
 **Back-calculation的工作过程分析：**
 
-```
-正常工作（未饱和）：
-  u_raw < out_max → u_sat = u_raw → u_sat - u_raw = 0 → 积分项不受影响
-
-开始饱和：
-  u_raw > out_max → u_sat = out_max → u_sat - u_raw < 0 → 积分项被拉回
-
-退饱和过程：
-  误差变号 → K_i * e < 0 → 积分项自然减小
-  同时 Kb * (u_sat - u_raw) < 0 → 积分项加速减小
-  → 退饱和速度远快于条件积分法！
+```mermaid
+flowchart TD
+    Normal["正常工作 未饱和"] -->|"u_raw < out_max"| NoEffect["u_sat = u_raw → u_sat - u_raw = 0 → 积分项不受影响"]
+    Normal -->|"u_raw > out_max"| Saturated["开始饱和 u_sat = out_max → u_sat - u_raw < 0 → 积分项被拉回"]
+    Saturated --> Unwind["退饱和过程"]
+    Unwind --> KiNeg["误差变号 → Ki*e < 0 → 积分项自然减小"]
+    Unwind --> KbNeg["同时 Kb*(u_sat-u_raw) < 0 → 积分项加速减小"]
+    KiNeg --> Result["退饱和速度远快于条件积分法!"]
+    KbNeg --> Result
 ```
 
 ### 4.4 方法三：积分限幅（Integrator Clamping）
@@ -1619,43 +1617,37 @@ void online_adaptive_tune(pid_t *pid, float voltage, float current,
 
 ### 10.1 电机控制PID设计完整流程
 
-```
-Step 1: 获取电机参数
-  ├── 测量或从数据手册获取: R, Ld, Lq, psi_f, J, p
-  ├── 注意: L应取额定电流下的饱和值
-  └── 注意: R应取最高工作温度下的值
-
-Step 2: 选择PID结构
-  ├── 电流环: 并联型 + 位置式PI
-  ├── 速度环: 并联型 + 位置式PI + 二自由度(beta=0.5~0.7)
-  └── 位置环: 并联型 + 增量式PI（可选）
-
-Step 3: 电流环PI整定（零极点对消法）
-  ├── 选择带宽: f_c = f_PWM / 10 ~ f_PWM / 15
-  ├── 计算: Kp = omega_c * L, Ki = omega_c * R
-  ├── 离散化: Kp_disc = Kp, Ki_disc = Ki * Ts
-  └── 抗饱和: Back-calculation + 积分限幅
-
-Step 4: 速度环PI整定（对称最优法）
-  ├── 选择系数: a = 4 ~ 6
-  ├── 计算: Kp_s = J * omega_c / (a * Kt)
-  ├── 计算: Ki_s = J * omega_c^2 / (a^3 * Kt)
-  ├── 离散化: Ki_s_disc = Ki_s * Ts_speed
-  └── 加速度前馈: i_ff = J/Kt * d(omega*)/dt
-
-Step 5: 位置环P整定
-  ├── Kp_pos = omega_BW_speed / 2（阻尼比0.707）
-  └── 速度前馈: omega_ff = d(theta*)/dt
-
-Step 6: 鲁棒性验证
-  ├── 参数偏差±30%时系统仍稳定
-  ├── 电感饱和（-30%~50%）时电流环不振荡
-  └── 负载变化（惯量±100%）时速度环不振荡
-
-Step 7: 实机调试
-  ├── 先电流环，再速度环，最后位置环
-  ├── 阶跃响应验证超调、上升时间、稳态误差
-  └── 负载突变验证抗干扰性能
+```mermaid
+flowchart TD
+    S1["Step 1: 获取电机参数"]
+    S1 --> S1a["测量或从数据手册获取: R, Ld, Lq, psi_f, J, p"]
+    S1 --> S1b["注意: L应取额定电流下的饱和值"]
+    S1 --> S1c["注意: R应取最高工作温度下的值"]
+    S2["Step 2: 选择PID结构"]
+    S2 --> S2a["电流环: 并联型 + 位置式PI"]
+    S2 --> S2b["速度环: 并联型 + 位置式PI + 二自由度"]
+    S2 --> S2c["位置环: 并联型 + 增量式PI 可选"]
+    S3["Step 3: 电流环PI整定 零极点对消法"]
+    S3 --> S3a["选择带宽: f_c = f_PWM/10 ~ f_PWM/15"]
+    S3 --> S3b["计算: Kp = omega_c*L, Ki = omega_c*R"]
+    S3 --> S3c["离散化: Kp_disc=Kp, Ki_disc=Ki*Ts"]
+    S3 --> S3d["抗饱和: Back-calculation + 积分限幅"]
+    S4["Step 4: 速度环PI整定 对称最优法"]
+    S4 --> S4a["选择系数: a = 4~6"]
+    S4 --> S4b["计算: Kp_s = J*omega_c/(a*Kt)"]
+    S4 --> S4c["计算: Ki_s = J*omega_c²/(a³*Kt)"]
+    S4 --> S4d["加速度前馈: i_ff = J/Kt * d(omega*)/dt"]
+    S5["Step 5: 位置环P整定"]
+    S5 --> S5a["Kp_pos = omega_BW_speed/2 阻尼比0.707"]
+    S5 --> S5b["速度前馈: omega_ff = d(theta*)/dt"]
+    S6["Step 6: 鲁棒性验证"]
+    S6 --> S6a["参数偏差±30%时系统仍稳定"]
+    S6 --> S6b["电感饱和 -30%~50% 时电流环不振荡"]
+    S6 --> S6c["负载变化 惯量±100% 时速度环不振荡"]
+    S7["Step 7: 实机调试"]
+    S7 --> S7a["先电流环 再速度环 最后位置环"]
+    S7 --> S7b["阶跃响应验证超调 上升时间 稳态误差"]
+    S7 --> S7c["负载突变验证抗干扰性能"]
 ```
 
 ### 10.2 参数速查表

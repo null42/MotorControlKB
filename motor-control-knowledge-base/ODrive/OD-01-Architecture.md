@@ -124,63 +124,51 @@ STO（安全转矩关断）设计：通过 `safety_critical_arm_brake_resistor()
 
 ### 3.1 分层架构图
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         ODrive 主类 (odrv)                          │
-│  ┌─────────────── SystemStats ─── BoardConfig ─── Oscilloscope ──┐ │
-│  └────────────────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────────────── Axis[0] ───────────────────────────────────┐ │
-│  │  ┌─ Encoder ──┐ ┌─ SensorlessEstimator ──┐                   │ │
-│  │  │ pos/vel/   │ │ phase/phase_vel/vel   │                    │ │
-│  │  │ phase 出    │ │  输出                  │                    │ │
-│  │  └─────┬──────┘ └──────────┬─────────────┘                   │ │
-│  │        │                   │                                  │ │
-│  │  ┌─────▼───────────────────▼──────────────────────────────┐   │ │
-│  │  │               Controller                               │   │ │
-│  │  │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐   │   │ │
-│  │  │  │ Pos Ctrl │→│ Vel Ctrl │→│ torque_output      │   │   │ │
-│  │  │  │ +Traj    │  │ +Anti-   │  │   (OutputPort)    │   │   │ │
-│  │  │  │          │  │  cogging │  └─────────┬─────────┘   │   │ │
-│  │  │  └──────────┘  └──────────┘            │              │   │ │
-│  │  └────────────────────────────────────────┼──────────────┘   │ │
-│  │                                           │                  │ │
-│  │  ┌────────────────────────────────────────▼──────────────┐   │ │
-│  │  │               Motor                                   │   │ │
-│  │  │  torque→Idq (转矩→电流转换) → Vdq FF → Idq_setpoint  │   │ │
-│  │  │  ├─ Feedforward: R_wL_FF, bEMF_FF                    │   │ │
-│  │  │  ├─ CurrentLimiter: fet_thermistor, motor_thermistor  │   │ │
-│  │  │  └─ 2-norm current clamping                          │   │ │
-│  │  └────────────────────────┬──────────────────────────────┘   │ │
-│  │                           │ Idq_setpoint, Vdq_setpoint       │ │
-│  │  ┌────────────────────────▼──────────────────────────────┐   │ │
-│  │  │         FieldOrientedController (FOC)                  │   │ │
-│  │  │  Clarke → Park → PI(Id,Iq) → InvPark → SVM → PWM     │   │ │
-│  │  └────────────────────────┬──────────────────────────────┘   │ │
-│  │                           │ tA,tB,tC → TIM1 CNT              │ │
-│  │  ┌────────────────────────▼──────────────────────────────┐   │ │
-│  │  │           Gate Driver (DRV8301)                        │   │ │
-│  │  │  3-Phase Inverter → BLDC/PMSM Motor                   │   │ │
-│  │  └───────────────────────────────────────────────────────┘   │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-│  │ usb_     │ │ uart_    │ │ can_     │ │ i2c_     │ │ analog_  │ │
-│  │ thread   │ │ thread   │ │ thread   │ │ thread   │ │ thread   │ │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘ │
-│  ┌──────────────────────────────────────────────────────────────┐ │
-│  │              communication_thread (ASCII 协议)               │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-├─────────────────────────────────────────────────────────────────────┤
-│                      FreeRTOS Kernel                               │
-│        (CMSIS-RTOS v1 API, Preemptive Priority Scheduling)         │
-├─────────────────────────────────────────────────────────────────────┤
-│               STM32F405RG (168MHz Cortex-M4F)                      │
-│   ┌────────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌────────────┐ │
-│   │ TIM1/8 │ │ ADC  │ │ SPI  │ │UART  │ │ CAN  │ │ USB FS OTG │ │
-│   │  PWM   │ │1/2/3 │ │1/3   │ │1/2/3 │ │1/2   │ │            │ │
-│   └────────┘ └──────┘ └──────┘ └──────┘ └──────┘ └────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph ODriveMain["ODrive主类 odrv"]
+        SysStats["SystemStats / BoardConfig / Oscilloscope"]
+    end
+    subgraph Axis0["Axis 0"]
+        Enc["Encoder pos/vel/phase"]
+        Sless["SensorlessEstimator phase/phase_vel/vel"]
+        Enc --> Ctrl["Controller"]
+        Sless --> Ctrl
+        Ctrl --> PosCtrl["Pos Ctrl + Traj"]
+        PosCtrl --> VelCtrl["Vel Ctrl + Anti-cogging"]
+        VelCtrl --> TorqueOut["torque_output OutputPort"]
+        TorqueOut --> Motor["Motor"]
+        Motor --> TorqueConv["torque→Idq 转矩→电流转换"]
+        TorqueConv --> VdqFF["Vdq FF + Feedforward R_wL_FF bEMF_FF"]
+        VdqFF --> CurLim["CurrentLimiter fet_thermistor motor_thermistor"]
+        CurLim --> FOC["FieldOrientedController FOC"]
+        FOC --> FOCFlow["Clarke→Park→PI Id Iq→InvPark→SVM→PWM"]
+        FOCFlow --> GateDrv["Gate Driver DRV8301"]
+        GateDrv --> InvMotor["3-Phase Inverter → BLDC/PMSM Motor"]
+    end
+    subgraph CommThreads["通信线程"]
+        USB["usb_thread"]
+        UART["uart_thread"]
+        CAN["can_thread"]
+        I2C["i2c_thread"]
+        Analog["analog_thread"]
+        Ascii["communication_thread ASCII协议"]
+    end
+    subgraph FreeRTOS["FreeRTOS Kernel CMSIS-RTOS v1"]
+        Kernel["Preemptive Priority Scheduling"]
+    end
+    subgraph STM32["STM32F405RG 168MHz Cortex-M4F"]
+        TIM["TIM1/8 PWM"]
+        ADC2["ADC 1/2/3"]
+        SPI["SPI 1/3"]
+        UART2["UART 1/2/3"]
+        CAN2["CAN 1/2"]
+        USBOTG["USB FS OTG"]
+    end
+    ODriveMain --> Axis0
+    Axis0 --> CommThreads
+    CommThreads --> FreeRTOS
+    FreeRTOS --> STM32
 ```
 
 ### 3.2 ODrive 主类的核心成员
@@ -215,33 +203,28 @@ extern ODrive odrv; // 全局单例, 定义于 main.cpp
 
 ODrive 固件的执行分为三个优先级层次：
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│  优先级层级 (从高到低)                                         │
-├────────────────────────────────────────────────────────────────┤
-│  LEVEL 1: Hardware Interrupt Context (最高)                    │
-│  ├── TIM1/TIM8 Update ISR: current_meas_cb / pwm_update_cb    │
-│  ├── ADC EOC ISR: ADC转换完成回调                              │
-│  ├── sampling_cb (同步采样: encoder GPIO, analog signals)      │
-│  └── control_loop_cb (控制回路: 编码器/估算器/控制器更新)      │
-├────────────────────────────────────────────────────────────────┤
-│  LEVEL 2: FreeRTOS Priority Threads                            │
-│  ┌──────────────┬──────────────┬──────────────┐                │
-│  │ axis_thread │ usb_thread   │ uart_thread  │                │
-│  │ (per-Axis)  │              │              │                │
-│  │ 状态机/校准 │ USB CDC收发  │ UART 收发    │                │
-│  └──────────────┴──────────────┴──────────────┘                │
-│  ┌──────────────┬──────────────┬──────────────┐                │
-│  │ can_thread  │ analog_thread│ i2c_thread   │                │
-│  │ CAN收发     │ 模拟量采样   │ I2C 收发     │                │
-│  └──────────────┴──────────────┴──────────────┘                │
-│  ┌───────────────────────────────────────────┐                 │
-│  │ communication_thread  (ASCII 协议解析)    │                 │
-│  └───────────────────────────────────────────┘                 │
-├────────────────────────────────────────────────────────────────┤
-│  LEVEL 3: idle hook                                            │
-│  └── vApplicationIdleHook: 系统统计/状态LED更新                │
-└────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph L1["LEVEL 1: Hardware Interrupt Context 最高"]
+        TIMISR["TIM1/TIM8 Update ISR: current_meas_cb / pwm_update_cb"]
+        ADCISR["ADC EOC ISR: ADC转换完成回调"]
+        SamplingCB["sampling_cb 同步采样: encoder GPIO, analog signals"]
+        CtrlLoopCB["control_loop_cb 控制回路: 编码器/估算器/控制器更新"]
+    end
+    subgraph L2["LEVEL 2: FreeRTOS Priority Threads"]
+        AxisThread["axis_thread per-Axis 状态机/校准"]
+        USBThread["usb_thread USB CDC收发"]
+        UARTThread["uart_thread UART收发"]
+        CANThread["can_thread CAN收发"]
+        AnalogThread["analog_thread 模拟量采样"]
+        I2CThread["i2c_thread I2C收发"]
+        CommThread["communication_thread ASCII协议解析"]
+    end
+    subgraph L3["LEVEL 3: idle hook"]
+        IdleHook["vApplicationIdleHook: 系统统计/状态LED更新"]
+    end
+    L1 --> L2
+    L2 --> L3
 ```
 
 ### 4.2 关键线程详解
@@ -301,21 +284,18 @@ ODrive 采用自定义的数据流通信模式，定义于 [component.hpp](file:
 
 闭环控制中组件间数据流路径 (在 [axis.cpp](file:///e:/gitee_CodeStorage/学习/MotorControl-main/odriver_core/MotorControl/axis.cpp#L220-L286) 的 `start_closed_loop_control()` 中建立)：
 
-```
-Encoder.pos_estimate_  ────▶ Controller.pos_estimate_linear_src_
-Encoder.vel_estimate_  ────▶ Controller.vel_estimate_src_
-Encoder.pos_circular_  ────▶ Controller.pos_estimate_circular_src_
-Encoder.phase_         ────▶ Motor.current_control_.phase_src_
-Encoder.phase_vel_     ────▶ Motor.phase_vel_src_
-                                    │
-Controller.torque_output_ ──────▶ Motor.torque_setpoint_src_
-                                    │
-Motor.Idq_setpoint_    ────▶ Motor.current_control_.Idq_setpoint_src_
-Motor.Vdq_setpoint_    ────▶ Motor.current_control_.Vdq_setpoint_src_
-                                    │
-              ┌─────────────────────┘
-              ▼
-    FOC → Gate Driver PWM
+```mermaid
+flowchart LR
+    EncPos["Encoder.pos_estimate_"] --> CtrlPos["Controller.pos_estimate_linear_src_"]
+    EncVel["Encoder.vel_estimate_"] --> CtrlVel["Controller.vel_estimate_src_"]
+    EncCirc["Encoder.pos_circular_"] --> CtrlCirc["Controller.pos_estimate_circular_src_"]
+    EncPhase["Encoder.phase_"] --> MotorPhase["Motor.current_control_.phase_src_"]
+    EncPhaseVel["Encoder.phase_vel_"] --> MotorPhaseVel["Motor.phase_vel_src_"]
+    CtrlTorque["Controller.torque_output_"] --> MotorTorque["Motor.torque_setpoint_src_"]
+    MotorIdq["Motor.Idq_setpoint_"] --> CurCtrlIdq["Motor.current_control_.Idq_setpoint_src_"]
+    MotorVdq["Motor.Vdq_setpoint_"] --> CurCtrlVdq["Motor.current_control_.Vdq_setpoint_src_"]
+    CurCtrlIdq --> FOC["FOC → Gate Driver PWM"]
+    CurCtrlVdq --> FOC
 ```
 
 ### 5.3 控制律抽象接口
@@ -343,52 +323,24 @@ class PhaseControlLaw {
 
 ### 6.1 启动流程图
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    固件启动完整流程                               │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. early_start_checks()                                         │
-│     ├── 检查 _reboot_cookie (DFU/正常启动/初次启动)               │
-│     ├── 防制动电阻烧毁延时 (旧板)                                 │
-│     └── 跳转 STM Bootloader (DFU模式)                            │
-│                                                                  │
-│  2. main()                                                       │
-│     ├── 生成 USB 序列号 (基于 UID)                               │
-│     ├── system_init() (时钟/Flash接口)                           │
-│     ├── config_manager.start_load() → config_read_all()          │
-│     │   → config_apply_all()                                     │
-│     ├── board_init() (外设初始化)                                 │
-│     ├── GPIO 模式配置                                             │
-│     ├── USB IRQ 信号量创建                                        │
-│     ├── UART/USB/CAN 事件队列创建                                 │
-│     └── osThreadCreate(rtos_main) → osKernelStart()              │
-│                                                                  │
-│  3. rtos_main() (FreeRTOS 主线程)                                │
-│     ├── MX_USB_DEVICE_Init()                                     │
-│     ├── start_general_purpose_adc()                              │
-│     ├── init_communication()                                     │
-│     ├── pwm_in_init()                                            │
-│     ├── motor.setup() (栅极驱动初始化)                            │
-│     ├── encoder.setup() (编码器外设启动)                          │
-│     ├── acim_estimator 信号连接                                   │
-│     ├── start_adc_pwm() (ADC & PWM 启动)                         │
-│     ├── start_analog_thread()                                    │
-│     ├── 等待电流传感器校准 (最长2s)                               │
-│     └── 启动 axis_thread (每个轴的状态机线程)                     │
-│                                                                  │
-│  4. Axis::run_state_machine_loop()                               │
-│     ├── AXIS_STATE_STARTUP_SEQUENCE                              │
-│     │   └── 根据配置执行:                                        │
-│     │       ├── MOTOR_CALIBRATION (电机参数校准)                  │
-│     │       ├── ENCODER_INDEX_SEARCH (编码器索引搜索)             │
-│     │       ├── ENCODER_OFFSET_CALIBRATION (编码器偏置校准)       │
-│     │       ├── ENCODER_HALL_POLARITY_CALIBRATION                 │
-│     │       ├── ENCODER_HALL_PHASE_CALIBRATION                    │
-│     │       └── CLOSED_LOOP_CONTROL (进入闭环控制)               │
-│     └── AXIS_STATE_IDLE (空闲,等待用户指令)                      │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    S1["1. early_start_checks()"] --> S2["2. main()"]
+    S2 --> S3["3. rtos_main() FreeRTOS主线程"]
+    S3 --> S4["4. Axis::run_state_machine_loop()"]
+    S1 --> S1a["检查 _reboot_cookie DFU/正常启动/初次启动"]
+    S1 --> S1b["防制动电阻烧毁延时"]
+    S1 --> S1c["跳转 STM Bootloader DFU模式"]
+    S2 --> S2a["生成USB序列号 / system_init() / config加载 / board_init()"]
+    S2 --> S2d["osThreadCreate rtos_main → osKernelStart"]
+    S3 --> S3a["USB/ADC/通信/PWM/电机/编码器初始化"]
+    S3 --> S3b["start_adc_pwm / 等待电流传感器校准 / 启动axis_thread"]
+    S4 --> S4a["AXIS_STATE_STARTUP_SEQUENCE"]
+    S4a --> S4b["MOTOR_CALIBRATION 电机参数校准"]
+    S4a --> S4c["ENCODER_INDEX_SEARCH 编码器索引搜索"]
+    S4a --> S4d["ENCODER_OFFSET_CALIBRATION 编码器偏置校准"]
+    S4a --> S4e["CLOSED_LOOP_CONTROL 进入闭环控制"]
+    S4 --> S4f["AXIS_STATE_IDLE 空闲 等待用户指令"]
 ```
 
 ### 6.2 系统快速检查 (do_fast_checks)
@@ -422,46 +374,25 @@ config_manager.start_load()
 
 ### 7.1 完整状态枚举
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    AxisState 状态转移图                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  AXIS_STATE_UNDEFINED ──▶ 系统启动初始状态                  │
-│         │                                                   │
-│         ▼                                                   │
-│  AXIS_STATE_STARTUP_SEQUENCE                                │
-│         │                                                   │
-│    ┌────┼─────────────────────────────────────┐            │
-│    │    │                                     │            │
-│    ▼    ▼                                     ▼            │
-│  MOTOR_  ENCODER_                     ENCODER_              │
-│  CALIBRATION INDEX_SEARCH          OFFSET_CALIBRATION       │
-│    │         │                            │                 │
-│    └────┬────┘          ┌─────────────────┘                 │
-│         │               │                                   │
-│         ▼               ▼                                   │
-│  ┌─────────────┐ ┌──────────────┐                          │
-│  │ HALL_POLARITY│ │HALL_PHASE_   │                          │
-│  │ CALIBRATION  │ │ CALIBRATION  │                          │
-│  └──────┬──────┘ └──────┬───────┘                          │
-│         │               │                                   │
-│         └───────┬───────┘                                   │
-│                 │                                           │
-│                 ▼                                           │
-│       CLOSED_LOOP_CONTROL                                   │
-│                 │                                           │
-│      ┌──────────┼──────────┐                                │
-│      ▼          ▼          ▼                                │
-│  LOCKIN_SPIN  ENCODER_   HOMING                             │
-│               DIR_FIND                                      │
-│      │          │          │                                │
-│      └──────────┴──────────┘                                │
-│                 │                                           │
-│                 ▼                                           │
-│              IDLE                                           │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> UNDEFINED: 系统启动
+    UNDEFINED --> STARTUP_SEQUENCE: 自动
+    STARTUP_SEQUENCE --> MOTOR_CALIBRATION: startup_motor_calibration
+    STARTUP_SEQUENCE --> ENCODER_INDEX_SEARCH: startup_encoder_index_search
+    STARTUP_SEQUENCE --> ENCODER_OFFSET_CALIBRATION: startup_encoder_offset_calibration
+    MOTOR_CALIBRATION --> HALL_POLARITY_CALIBRATION: Hall编码器
+    ENCODER_INDEX_SEARCH --> HALL_POLARITY_CALIBRATION: Hall编码器
+    ENCODER_OFFSET_CALIBRATION --> HALL_PHASE_CALIBRATION: Hall编码器
+    HALL_POLARITY_CALIBRATION --> CLOSED_LOOP_CONTROL: 校准完成
+    HALL_PHASE_CALIBRATION --> CLOSED_LOOP_CONTROL: 校准完成
+    CLOSED_LOOP_CONTROL --> LOCKIN_SPIN: 用户请求
+    CLOSED_LOOP_CONTROL --> ENCODER_DIR_FIND: 用户请求
+    CLOSED_LOOP_CONTROL --> HOMING: 用户请求
+    LOCKIN_SPIN --> IDLE: 完成
+    ENCODER_DIR_FIND --> IDLE: 完成
+    HOMING --> IDLE: 完成
+    IDLE --> CLOSED_LOOP_CONTROL: 用户请求
 ```
 
 ### 7.2 状态说明

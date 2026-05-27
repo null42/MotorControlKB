@@ -71,29 +71,26 @@ typedef enum {
 
 ### 2.2 角度来源路由
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    角度获取策略路由                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  foc_sensor_mode ──► 角度来源                                    │
-│                                                                  │
-│  ┌─ SENSORLESS ──────► foc_observer_update() ──► observer_phase │
-│  │                          │                                    │
-│  │                     foc_pll_run() ────────► filtered_phase    │
-│  │                                                               │
-│  ├─ ENCODER ────────► encoder_read() ──────► enc_phase          │
-│  │                foc_correct_encoder() ←─── 观测器+编码器融合   │
-│  │                                                               │
-│  ├─ HALL ───────────► hall_read() ────────► hall_angle          │
-│  │                foc_correct_hall() ←────── 插值+速率限制       │
-│  │                                                               │
-│  ├─ HFI / HFI_V2~V5 ─► foc_hfi_adjust_angle() ─► hfi_phase     │
-│  │                     HFI 角度误差 → PLL → 角度                │
-│  │                                                               │
-│  └─ SENSORED (BLDC) ─► hall_table → comm_step → angle           │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Mode["foc_sensor_mode"] --> Sensorless["SENSORLESS"]
+    Mode --> Encoder["ENCODER"]
+    Mode --> Hall["HALL"]
+    Mode --> HFI["HFI / HFI_V2~V5"]
+    Mode --> Sensored["SENSORED BLDC"]
+    Sensorless --> ObsUpdate["foc_observer_update()"]
+    ObsUpdate --> ObsPhase["observer_phase"]
+    ObsUpdate --> PLLRun["foc_pll_run()"]
+    PLLRun --> FiltPhase["filtered_phase"]
+    Encoder --> EncRead["encoder_read()"]
+    EncRead --> EncPhase["enc_phase"]
+    EncRead --> EncCorrect["foc_correct_encoder() 观测器+编码器融合"]
+    Hall --> HallRead["hall_read()"]
+    HallRead --> HallAngle["hall_angle"]
+    HallRead --> HallCorrect["foc_correct_hall() 插值+速率限制"]
+    HFI --> HFIAdj["foc_hfi_adjust_angle()"]
+    HFIAdj --> HFIPhase["hfi_phase"]
+    Sensored --> HallTable["hall_table → comm_step → angle"]
 ```
 
 ---
@@ -322,21 +319,14 @@ if (phase) {
 PLL 用于从观测器估计的含噪声角度中提取平滑的速度和角度信息：
 
 ```
-                    ┌──────────────────────────────────────┐
-  raw_phase ────┬──▶│  Δθ = raw_phase - pll_phase         │
-                │   │  normalize(Δθ)  → [-π, π]            │
-                │   │                                       │
-                │   │  speed += Ki × Δθ × dt               │
-                │   │  pll_phase += (speed + Kp × Δθ) × dt │
-                │   │  normalize(pll_phase) → [0, 2π]      │
-                │   │                                       │
-                │   └──────────────┬───────────────────────┘
-                │                  │
-                │                  ▼  (pll_phase, pll_speed)
-                │             用于 Park/逆Park 变换和速度环反馈
-                │
-  ─── 等同于一个二阶低通滤波器:
-      H(s) = (Kp·s + Ki) / (s² + Kp·s + Ki)
+```mermaid
+flowchart LR
+    RawPhase["raw_phase"] --> PLL["PLL 鉴相器"]
+    PLL --> DeltaTheta["Δθ = raw_phase - pll_phase 归一化到 -π,π"]
+    DeltaTheta --> SpeedUpdate["speed += Ki × Δθ × dt"]
+    DeltaTheta --> PhaseUpdate["pll_phase += speed + Kp × Δθ × dt"]
+    PhaseUpdate --> Output["pll_phase, pll_speed → Park/逆Park变换和速度环反馈"]
+    SpeedUpdate --> PhaseUpdate
 ```
 
 ### 4.2 代码实现
@@ -563,27 +553,12 @@ void foc_hfi_adjust_angle(float ang_err, motor_all_state_t *motor, float dt) {
 
 ### 8.7 HFI 启动→运行过渡
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                     HFI 状态过渡                                  │
-│                                                                   │
-│  ┌──────────┐    直流定位    ┌──────────────┐                    │
-│  │  STOP    │───────────────▶│ HFI_START    │                    │
-│  │          │                │ (AMB探测)    │                    │
-│  └──────────┘                └──────┬───────┘                    │
-│                                     │ start_samples 完成          │
-│                                     ▼                             │
-│                              ┌──────────────┐                    │
-│                              │ HFI          │                    │
-│                              │ (持续运行)    │                    │
-│                              └──────┬───────┘                    │
-│                                     │ RPM > sl_erpm_hfi           │
-│                                     ▼                             │
-│                              ┌──────────────┐                    │
-│                              │ SENSORLESS   │                    │
-│                              │ (观测器接管)  │                    │
-│                              └──────────────┘                    │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> STOP
+    STOP --> HFI_START: 直流定位
+    HFI_START --> HFI: start_samples完成
+    HFI --> SENSORLESS: RPM > sl_erpm_hfi
 ```
 
 ---
@@ -663,27 +638,11 @@ float foc_correct_hall(float angle, float dt,
 
 ### 11.2 混合模式启动流程
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  开环→闭环 混合启动                          │
-│                                                              │
-│  Phase 1: 直流对齐 (time_lock)                              │
-│    └─ 注入直流 Iq, 转子对齐到给定角度                       │
-│                                                              │
-│  Phase 2: 开环加速 (time_ramp)                              │
-│    └─ 以固定斜率增大电流和频率                               │
-│    └─ 开环角度代替观测器角度                                 │
-│                                                              │
-│  Phase 3: 开环稳速 (time - lock - ramp)                     │
-│    └─ 在 openloop_rpm 下稳定运行                             │
-│    └─ 观测器收敛                                             │
-│                                                              │
-│  Phase 4: 切入闭环 (当 RPM > sl_erpm)                       │
-│    └─ 平滑切换到观测器+PLL 角度                              │
-│    └─ 电流/速度闭环接管                                      │
-│                                                              │
-│  条件: sl_erpm < RPM < sl_erpm + hyst (带滞回)              │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    P1["Phase 1: 直流对齐 time_lock"] --> P2["Phase 2: 开环加速 time_ramp"]
+    P2 --> P3["Phase 3: 开环稳速 观测器收敛"]
+    P3 --> P4["Phase 4: 切入闭环 RPM > sl_erpm"]
 ```
 
 ---

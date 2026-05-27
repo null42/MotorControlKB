@@ -85,12 +85,12 @@
 
 这是前馈最反直觉也最重要的性质：
 
-```
-         ┌── [前馈 Cf(s)] ──┐
-         ↓                   ↓
-R → ⨁ → [反馈 C(s)] → ⨁ → [G(s)] → Y
-    ↑ -                 ↑
-    └───────────────────┘
+```mermaid
+flowchart LR
+    R["R"] --> SUM1["⊕"] --> C["反馈 C(s)"] --> SUM2["⊕"] --> G["G(s)"] --> Y["Y"]
+    R -->|"前馈"| CF["前馈 Cf(s)"] --> SUM2
+    Y -->|"反馈"| FB
+    FB -->|"- "| SUM1
 ```
 
 闭环传函：$T(s) = \frac{(C(s)+C_f(s))G(s)}{1+C(s)G(s)} = \frac{C_f(s)G(s)}{1+C(s)G(s)} + \frac{C(s)G(s)}{1+C(s)G(s)}$
@@ -150,12 +150,12 @@ u_q^{PI} = R_s i_q + L_q \frac{di_q}{dt}
 
 位置环控制结构：
 
-```
-θ_ref → [速度FF] → ω_ff → ⨁ → [速度环PI] → Iq_ref
-    ↓                          ↑
-    → [位置环PI] → ω_ref → ⨁(─)
-                              ↑
-                            ω_fb
+```mermaid
+flowchart LR
+    THETA_REF["θ_ref"] --> SPD_FF["速度FF"] --> SUM1["⊕"] --> SPD_PI["速度环PI"] --> IQ_REF["Iq_ref"]
+    THETA_REF --> POS_PI["位置环PI"] --> SUM2["ω_ref"]
+    SUM2 --> SUM1
+    OMEGA_FB["ω_fb"] -->|"-"| SUM1
 ```
 
 速度前馈：$\omega_{ff} = K_{vff} \cdot \dot{\theta}_{ref}$
@@ -202,12 +202,14 @@ $$I_q^{ff} = \tau_{ff} / K_t$$
 
 ### 5.3 级联前馈——FOC三层前馈结构
 
-```
-位置前馈(¨θ) → 速度前馈(\dot{θ}) → 反电动势前馈(ωe·ψf)
-      ↓               ↓                    ↓
-  加速度FF          速度FF            解耦FF
-      ↓               ↓                    ↓
-   Iq_ff           Iq_ref             Vd_ff, Vq_ff
+```mermaid
+flowchart TD
+    POS_FF["位置前馈 θ̈"] --> ACC_FF["加速度FF"]
+    SPD_FF["速度前馈 θ̇"] --> SPD_FF_OUT["速度FF"]
+    BEMF_FF["反电动势前馈 ωe·ψf"] --> DEC_FF["解耦FF"]
+    ACC_FF --> IQ_FF["Iq_ff"]
+    SPD_FF_OUT --> IQ_REF["Iq_ref"]
+    DEC_FF --> VD_FF["Vd_ff, Vq_ff"]
 ```
 
 每层前馈分别补偿对应物理层面的已知动态，逐层减轻反馈控制器的负担。

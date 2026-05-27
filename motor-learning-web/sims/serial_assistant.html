@@ -1151,13 +1151,16 @@ function demoStep(dt) {
     }
   }
   const chCount = G.channelCount;
-  const frameLen = 4 + chCount * 4 + 2;
+  const frameLen = 4 + chCount * 4 + 2 + 2;
   const buf = new Uint8Array(frameLen);
   buf[0] = 0xAA; buf[1] = 0x55;
   buf[2] = chCount; buf[3] = 0;
   const dv = new DataView(buf.buffer, 4, chCount * 4);
   for (let i = 0; i < chCount; i++) dv.setFloat32(i * 4, vals[i], true);
   buf[4 + chCount * 4] = 0x55; buf[4 + chCount * 4 + 1] = 0xAA;
+  const crc = crc16CCITT(buf, 0, 4 + chCount * 4);
+  buf[4 + chCount * 4 + 2] = crc & 0xFF;
+  buf[4 + chCount * 4 + 3] = (crc >> 8) & 0xFF;
   processIncoming(buf);
   appendRecvText(buf);
 }

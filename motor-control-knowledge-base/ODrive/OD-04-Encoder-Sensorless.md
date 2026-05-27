@@ -34,42 +34,14 @@ ODrive 提供多种电机位置/速度反馈方案，支持有传感器和无传
 
 ### 1.1 位置反馈系统架构
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      位置反馈系统                                │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────┐    ┌─────────────────────┐    ┌─────────────┐ │
-│  │ 物理传感器   │───▶│  Encoder (PLL跟踪)   │───▶│ pos_estimate│ │
-│  │             │    │  - 增量 ABI         │    │ vel_estimate│ │
-│  │ 增量编码器   │    │  - 绝对 SPI         │    │ phase       │ │
-│  │ 霍尔传感器   │    │  - Hall (120°/60°)  │    │ phase_vel   │ │
-│  │ SinCos      │    │  - SinCos ADC       │    │ pos_circular│ │
-│  └─────────────┘    └─────────────────────┘    └──────┬──────┘ │
-│                                                        │       │
-│  ┌─────────────────┐    ┌──────────────────────┐       │       │
-│  │ 无传感器 (备用)  │───▶│ SensorlessEstimator   │──────┘       │
-│  │                 │    │ - 非线性磁链观测器    │               │
-│  │ Ia,Ib,Ic +      │    │ - PLL 锁相环         │               │
-│  │ Vα,Vβ           │    │ - 磁链估计 + 速度提取 │               │
-│  └─────────────────┘    └──────────────────────┘               │
-│                                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────────────┐                                       │
-│  │   Controller         │                                       │
-│  │   pos_estimate_src  ←┼── Encoder.pos_estimate_               │
-│  │   vel_estimate_src  ←┼── Encoder.vel_estimate_               │
-│  │   (sensorless mode)  ←┼── SensorlessEstimator.vel_estimate_  │
-│  └──────────────────────┘                                       │
-│                                                                 │
-│  ┌──────────────────────┐                                       │
-│  │   Motor → FOC        │                                       │
-│  │   phase_src         ←┼── Encoder.phase_                      │
-│  │   phase_vel_src     ←┼── Encoder.phase_vel_                  │
-│  └──────────────────────┘                                       │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    PhysSensor["物理传感器 增量编码器/霍尔/SinCos"] --> EncPLL["Encoder PLL跟踪 增量ABI/绝对SPI/Hall/SinCos ADC"]
+    EncPLL --> EncOutput["pos_estimate / vel_estimate / phase / phase_vel / pos_circular"]
+    Sensorless["无传感器 Ia,Ib,Ic + Vα,Vβ"] --> SlessEst["SensorlessEstimator 非线性磁链观测器/PLL锁相环/磁链估计+速度提取"]
+    SlessEst --> EncOutput
+    EncOutput --> Controller["Controller pos_estimate_src ← Encoder / vel_estimate_src ← Encoder / sensorless mode ← SensorlessEstimator"]
+    EncOutput --> MotorFOC["Motor→FOC phase_src ← Encoder.phase_ / phase_vel_src ← Encoder.phase_vel_"]
 ```
 
 ### 1.2 编码器模式
@@ -99,20 +71,16 @@ ODrive 提供多种电机位置/速度反馈方案，支持有传感器和无传
 
 PLL 结构：
 
-```
-  pos_meas (counts)       delta_pos
-       │                      │
-       ▼                      ▼
-  ┌─────────┐    +    ┌─────────────┐    ┌─────────┐
-  │ 上一周期  │───▶⊕──▶│ pll_kp × Ts  │───▶│ pll_pos │───▶ phase
-  │ pll_pos  │    ▲   └─────────────┘    └────┬────┘
-  └─────────┘    │                            │
-                 │   ┌─────────────┐          │
-                 └───│ pll_ki × Ts  │◀────────┘
-                     └─────────────┘    pll_vel ──▶ phase_vel
-                          ▲
-                          │
-                      delta_pos
+```mermaid
+flowchart LR
+    PosMeas["pos_meas counts"] --> DeltaPos["delta_pos"]
+    PrevPos["上一周期 pll_pos"] --> Sum["+"]
+    DeltaPos --> KpBlock["pll_kp × Ts"]
+    DeltaPos --> KiBlock["pll_ki × Ts"]
+    Sum --> KpBlock
+    KpBlock --> PllPos["pll_pos → phase"]
+    KiBlock --> PllVel["pll_vel → phase_vel"]
+    PllPos -->|"反馈"| DeltaPos
 ```
 
 **离散时间 PLL 方程：**

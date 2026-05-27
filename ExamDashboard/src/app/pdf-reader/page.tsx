@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
+import MermaidRenderer from "@/components/MermaidRenderer";
 import { mcOutline, PdfOutlineItem } from "@/data/mc-outline.generated";
 import { renderMarkdown } from "@/lib/markdown";
 import "katex/dist/katex.min.css";
@@ -520,6 +521,7 @@ function DocReaderInner() {
                     ref={contentRef}
                     dangerouslySetInnerHTML={{ __html: renderedContent }}
                   />
+                  <MermaidRenderer contentRef={contentRef} />
                   {activeAnnotationId && (
                     <div className="mt-2 p-4 rounded-lg bg-primary/5 border border-primary/20 animate-in fade-in slide-in-from-top-2">
                       <div className="flex items-center justify-between mb-2">

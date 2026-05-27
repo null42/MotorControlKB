@@ -17,16 +17,17 @@
 
 **核心问题链：**
 
-```
-变频器/伺服/电控是什么关系？ → 共享功率拓扑，控制深度递进
-控制目标有什么不同？         → 调速 vs. 定位 vs. 效率+安全
-算法差异在哪里？             → V/F vs. FOC vs. FOC+弱磁+功能安全
-硬件配置差多少？             → 采样精度、编码器、电容、散热
-保护策略有何不同？           → 基本保护 vs. 精密保护 vs. 功能安全
-通信协议怎么选？             → Modbus vs. EtherCAT vs. CAN-FD
-性能指标差几个数量级？       → 1:100 vs. 1:10000 调速比
-开发流程有什么不同？         → 通用框架一致，侧重点差异巨大
-如何跨领域迁移？             → 识别通用知识，补齐领域短板
+```mermaid
+flowchart TD
+    A["变频器/伺服/电控是什么关系?"] --> B["共享功率拓扑 控制深度递进"]
+    C["控制目标有什么不同?"] --> D["调速 vs. 定位 vs. 效率+安全"]
+    E["算法差异在哪里?"] --> F["V/F vs. FOC vs. FOC+弱磁+功能安全"]
+    G["硬件配置差多少?"] --> H["采样精度 编码器 电容 散热"]
+    I["保护策略有何不同?"] --> J["基本保护 vs. 精密保护 vs. 功能安全"]
+    K["通信协议怎么选?"] --> L["Modbus vs. EtherCAT vs. CAN-FD"]
+    M["性能指标差几个数量级?"] --> N["1:100 vs. 1:10000 调速比"]
+    O["开发流程有什么不同?"] --> P["通用框架一致 侧重点差异巨大"]
+    Q["如何跨领域迁移?"] --> R["识别通用知识 补齐领域短板"]
 ```
 
 ---
@@ -57,10 +58,13 @@ $$\frac{V}{f} = \text{const}$$
 
 保持电压与频率的比值恒定，维持气隙磁链基本不变。这是最简单的变频控制策略：
 
-```
-频率指令 f* ──→ V/f发生器 ──→ V*, f* ──→ SPWM/SVPWM ──→ 逆变桥 ──→ 电机
-                     │
-                 磁链保持恒定
+```mermaid
+flowchart LR
+    FreqRef["频率指令 f*"] --> VFGen["V/f发生器"]
+    VFGen --> SPWM["SPWM/SVPWM"]
+    SPWM --> InvBridge["逆变桥"]
+    InvBridge --> Motor["电机"]
+    VFGen --> FluxConst["磁链保持恒定"]
 ```
 
 ### 2.2 伺服驱动器（Servo Drive）
@@ -89,10 +93,18 @@ $$\begin{bmatrix} V_d \\ V_q \end{bmatrix} = \begin{bmatrix} R_s + L_d \frac{d}{
 
 通过Clarke/Park变换将三相交流量转化为旋转坐标系下的直流量，实现转矩和磁链的解耦控制：
 
-```
-位置指令 θ* ──→ 位置环 ──→ 速度环 ──→ 电流环 ──→ FOC ──→ 逆变桥 ──→ 电机
-                ↑            ↑          ↑                    ↑
-              编码器反馈    编码器反馈  电流采样            编码器反馈
+```mermaid
+flowchart LR
+    PosRef["位置指令 θ*"] --> PosLoop["位置环"]
+    PosLoop --> SpdLoop["速度环"]
+    SpdLoop --> CurLoop["电流环"]
+    CurLoop --> FOC["FOC"]
+    FOC --> InvBridge["逆变桥"]
+    InvBridge --> Motor["电机"]
+    EncFB["编码器反馈"] --> PosLoop
+    EncFB --> SpdLoop
+    CurFB["电流采样"] --> CurLoop
+    EncFB2["编码器反馈"] --> FOC
 ```
 
 ### 2.3 电控（新能源汽车电机控制器，MCU/Traction Inverter）

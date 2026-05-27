@@ -34,43 +34,37 @@ ODrive 的控制器 ([controller.cpp](file:///e:/gitee_CodeStorage/学习/MotorC
 
 ### 1.1 系统位置
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                                                                  │
-│   Encoder.pos_estimate ──┐                                       │
-│   Encoder.vel_estimate ──┤                                       │
-│                          ├──▶ Controller ──▶ Motor (torque)      │
-│   setpoint (上位机) ─────┘    │                                   │
-│                           ┌───┴──────────────────┐               │
-│                           │  INPUT_MODE           │               │
-│                           │  ├─ PASSTHROUGH       │               │
-│                           │  ├─ VEL_RAMP          │               │
-│                           │  ├─ TORQUE_RAMP       │               │
-│                           │  ├─ POS_FILTER        │               │
-│                           │  ├─ TRAP_TRAJ         │               │
-│                           │  ├─ MIRROR            │               │
-│                           │  └─ TUNING            │               │
-│                           └───┬──────────────────┘               │
-│                           ┌───┴──────────────────┐               │
-│                           │  CONTROL_MODE         │               │
-│                           │  ├─ POSITION_CONTROL  │               │
-│                           │  ├─ VELOCITY_CONTROL  │               │
-│                           │  └─ TORQUE_CONTROL    │               │
-│                           └──────────────────────┘               │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    EncPos["Encoder.pos_estimate"] --> Controller["Controller"]
+    EncVel["Encoder.vel_estimate"] --> Controller
+    Setpoint["setpoint 上位机"] --> Controller
+    Controller --> Motor["Motor torque"]
+    Controller --> InputMode["INPUT_MODE"]
+    InputMode --> IM_Pass["PASSTHROUGH"]
+    InputMode --> IM_VelRamp["VEL_RAMP"]
+    InputMode --> IM_TorqRamp["TORQUE_RAMP"]
+    InputMode --> IM_PosFilter["POS_FILTER"]
+    InputMode --> IM_TrapTraj["TRAP_TRAJ"]
+    InputMode --> IM_Mirror["MIRROR"]
+    InputMode --> IM_Tuning["TUNING"]
+    Controller --> CtrlMode["CONTROL_MODE"]
+    CtrlMode --> CM_Pos["POSITION_CONTROL"]
+    CtrlMode --> CM_Vel["VELOCITY_CONTROL"]
+    CtrlMode --> CM_Torq["TORQUE_CONTROL"]
 ```
 
 ### 1.2 控制级联
 
-```
-                 ┌──────────┐     ┌──────────┐     ┌──────────┐
-  pos_ref ──────▶│ Position │────▶│ Velocity │────▶│ Torque/  │──▶ Motor
-                 │  Loop    │     │  Loop    │     │ Current  │    FOC
-  pos_fbk ──────▶│ (P 控制) │     │ (PI控制) │     │  Loop    │
-                 └──────────┘     └──────────┘     └──────────┘
-                  (外环, 较慢)     (中环, 中等)      (内环,最快)
-                                                  ↓ FOC 执行
+```mermaid
+flowchart LR
+    PosRef["pos_ref"] --> PosLoop["Position Loop P控制"]
+    PosFbk["pos_fbk"] --> PosLoop
+    PosLoop --> VelLoop["Velocity Loop PI控制"]
+    VelFbk["vel_fbk"] --> VelLoop
+    VelLoop --> CurLoop["Torque/Current Loop PI控制"]
+    CurFbk["Iq_fbk"] --> CurLoop
+    CurLoop --> MotorFOC["Motor FOC"]
 ```
 
 | 环 | 模式 | 输入 | 输出 | 典型带宽 |

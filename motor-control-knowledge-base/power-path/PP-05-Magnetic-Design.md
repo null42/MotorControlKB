@@ -174,18 +174,16 @@ $$
 
 ### 4.2 BH 曲线与磁滞回线
 
-```
-    B (T)
-    │   Bsat ──┬──────────── 饱和区
-    │         ╱
-    │        ╱ ← 线性区 (μ = ΔB/ΔH)
-    │       ╱
-    │  Br  ●──── 剩磁
-    │   ╱ │
-  ──┼──/──┼──────→ H (A/m)
-    │ /   │
-    │/    ● Hc (矫顽力)
-    │
+```mermaid
+flowchart LR
+    subgraph BH["BH 曲线关键区域"]
+        direction TB
+        Sat["Bsat 饱和区: B几乎不随H增大"]
+        Lin["线性区: B = μ×H μ=ΔB/ΔH"]
+        Rem["Br 剩磁: H=0时剩余磁通"]
+        Coh["Hc 矫顽力: 使B=0所需反向磁场"]
+    end
+    Sat --> Lin --> Rem --> Coh
 ```
 
 **工作点选择**：

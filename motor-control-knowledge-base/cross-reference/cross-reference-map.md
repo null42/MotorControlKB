@@ -256,6 +256,30 @@
 | 可观测性 | ALG-07 无感观测器 | 零速/低速时反电动势不可观测→需要HFI辅助 | [ALG-07](../algorithm/ALG-07-Sensorless-Observers.md#零速问题) |
 | 观测器收敛速度 | ALG-07 无感观测器 | 观测器动态必须快于控制环→但增益太高→噪声放大 | [ALG-07](../algorithm/ALG-07-Sensorless-Observers.md#收敛分析) |
 
+### CT-14/CT-15 三环级联PID与优化 → 算法关联
+
+| 控制理论知识点 | 影响的算法模块 | 影响机制 | 引用链接 |
+|-----------|-------------|---------|---------|
+| 三环带宽分配10:3:1法则 | ALG-05 有感FOC | 电流环ωc≈1000~2000→速度环ωc≈100~300→位置环ωc≈30~100 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#电流环) |
+| 级联PID的bumpless transfer | ALG-05 有感FOC | 力矩/速度/位置三模式切换时积分状态初始化→无冲击切换 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#控制模式切换) |
+| Anti-windup(back-calculation) | ALG-05 有感FOC | 电压饱和时积分不累积→$K_b=1/T_t$反算修正 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#电流环) |
+| 不完全微分+微分滤波 | ALG-12 速度环 | 速度环D项需低通滤波 $D(s)=K_d s/(1+\tau_f s)$ →抑制噪声 | [ALG-12](../algorithm/ALG-12-Speed-Loop-Torque-Observer.md#速度环PID) |
+| 自适应PID增益调度 | ALG-05 有感FOC | 不同转速/负载段查表切换Kp/Ki→全工况优化 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#PI参数整定) |
+| 前馈解耦(速度/加速度/重力) | ALG-05 有感FOC | 速度前馈注入速度环→加速度前馈注入电流环→重力补偿注入位置环 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#前馈解耦) |
+
+### CT-16/CT-17/CT-18 ADRC/LADRC → 算法关联
+
+| 控制理论知识点 | 影响的算法模块 | 影响机制 | 引用链接 |
+|-----------|-------------|---------|---------|
+| ESO扩张状态观测器 | ALG-05 有感FOC | 二阶LESO估计dq轴总扰动(反电动势+参数误差+死区)→扰动补偿 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#电流环) |
+| LESO带宽参数化(ωo) | ALG-05 有感FOC | β1=2ωo,β2=ωo²→观测器增益与采样频率协调设计 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#PI参数整定) |
+| LADRC电流环(PD+补偿) | ALG-05 有感FOC | $u=(ωc(i_{ref}\\!-\\!z_1)-z_2)/b_0$ →比PI更强的参数鲁棒性 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#电流环) |
+| LADRC速度环(三阶LESO) | ALG-12 速度环 | 三阶LESO估计负载转矩→前馈补偿→负载突变转速跌落从15%降至4% | [ALG-12](../algorithm/ALG-12-Speed-Loop-Torque-Observer.md#负载转矩观测) |
+| LADRC位置环(二阶LADRC) | ALG-05 有感FOC | 二阶LADRC单环替代位置+速度双PI环→减少整定参数 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#位置环) |
+| fhan跟踪微分器 | ALG-12 速度环 | TD安排速度斜坡过渡过程→消除阶跃给定时的超调 | [ALG-12](../algorithm/ALG-12-Speed-Loop-Torque-Observer.md#速度斜坡) |
+| LADRC vs PI频域对比 | ADV-ALG-01 带宽设计 | LADRC等效传函在低频段有更强的扰动抑制比 | [ADV-ALG-01](../advanced/algorithm/ADV-ALG-01-Bandwidth-Filter.md#频域分析) |
+| PI→LADRC迁移路径 | ALG-05 有感FOC | 电流环→速度环→位置环三步渐进替换策略 | [ALG-05](../algorithm/ALG-05-Sensored-FOC.md#控制策略) |
+
 ---
 
 ## 🔋 功率变换→电控关联映射
@@ -503,6 +527,11 @@
 | CT-11 观测器设计 | `hpm_mcl/inc/hpm_smc.h`, `hpm_mcl/inc/hpm_hfi.h` |
 | CT-12 状态反馈 | `hpm_mcl_v2/core/control/hpm_mcl_path_plan.h` |
 | CT-13 LQR/LQG | `hpm_mcl_v2/core/control/hpm_mcl_control.h`, `hpm_mcl_v2/core/control/hpm_mcl_hybrid_ctrl.h` |
+| CT-14 三环级联PID | `hpm_mcl_v2/core/control/hpm_mcl_control.h`, `hpm_mcl_v2/core/control/hpm_mcl_path_plan.h` |
+| CT-15 PID优化策略 | `hpm_mcl_v2/core/control/hpm_mcl_control.h` |
+| CT-16 ADRC理论 | `hpm_mcl_v2/core/control/hpm_mcl_control.h`, `hpm_mcl_v2/core/control/hpm_mcl_hybrid_ctrl.h` |
+| CT-17 LADRC线性化 | `hpm_mcl_v2/core/control/hpm_mcl_control.h`, `hpm_mcl_v2/core/control/hpm_mcl_hybrid_ctrl.h` |
+| CT-18 ADRC/LADRC工程实现 | `hpm_mcl_v2/core/control/hpm_mcl_control.h`, `hpm_mcl_v2/core/control/hpm_mcl_hybrid_ctrl.h`, `hpm_mcl_v2/core/control/hpm_mcl_path_plan.h` |
 | HW-01 电机本体 | `hpm_mcl_v2/hpm_mcl_physical.h`, `hpm_mcl/inc/hpm_bldc_define.h` |
 | HW-02 电流采样 | `hpm_mcl_v2/core/sensor/hpm_mcl_analog.h` |
 | HW-03 位置传感器 | `hpm_mcl_v2/core/sensor/hpm_mcl_encoder.h`, `hpm_mcl_v2/encoder/hpm_mcl_abz.h`, `hpm_mcl_v2/encoder/hpm_mcl_uvw.h` |

@@ -58,42 +58,20 @@ Controller.torque_setpoint  →  Motor.update(torque→Idq)
 
 FOC 的核心思想是将三相静止坐标系 (abc) 下的交流量变换为两相旋转坐标系 (dq) 下的直流量进行控制。
 
-```
-  Ia, Ib, Ic                         Id, Iq
-  三相静止                             两相旋转
-  ┌───────┐    Clarke     ┌───────┐     Park      ┌───────┐
-  │  abc  │ ────────────▶ │  αβ   │ ──────────▶  │  dq   │
-  │ 轴系  │               │ 轴系  │              │ 轴系  │
-  └───────┘               └───────┘              └───────┘
-       ▲                       ▲                      │
-       │                       │               PI Controller
-       │                ┌──────┘                      │
-       │                │                             ▼
-       │                │                      ┌───────────┐
-       │                │    InvPark            │  Vd, Vq   │
-       │                │ ◀─────────────────   └───────────┘
-       │                │
-       │          ┌─────┴──────┐
-       │          │  Vα, Vβ   │
-       │          └─────┬──────┘
-       │                │
-       │          ┌─────┴──────┐
-       │          │    SVM     │
-       │          └─────┬──────┘
-       │                │
-       │          ┌─────┴──────┐
-       │          │ tA,tB,tC   │
-       │          │ → TIM CCR  │
-       │          └────────────┘
-  ┌───────┐
-  │ 3相   │
-  │逆变器 │ ← PWM 信号
-  └───┬───┘
-      │
-  ┌───┴───┐
-  │ PMSM  │
-  │ /BLDC │
-  └───────┘
+```mermaid
+flowchart LR
+    ABC["Ia, Ib, Ic 三相静止 abc轴系"] --> Clarke["Clarke变换"]
+    Clarke --> AlphaBeta["iα, iβ 两相静止 αβ轴系"]
+    AlphaBeta --> Park["Park变换"]
+    Park --> DQ["Id, Iq 两相旋转 dq轴系"]
+    DQ --> PI["PI控制器"]
+    PI --> VdVq["Vd, Vq"]
+    VdVq --> InvPark["逆Park变换"]
+    InvPark --> ValphaBeta["Vα, Vβ"]
+    ValphaBeta --> SVM["SVM调制"]
+    SVM --> TIMCCR["tA, tB, tC → TIM CCR"]
+    TIMCCR --> Inverter["3相逆变器 ← PWM信号"]
+    Inverter --> Motor["PMSM/BLDC"]
 ```
 
 ### 2.2 Clarke 变换 (abc → αβ)

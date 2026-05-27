@@ -146,102 +146,73 @@ SYSTEM_CORE_CLOCK = 168000000 Hz
 
 ### 3.1 分层架构图
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                           VESC 固件分层架构                               │
-├──────────────────────────────────────────────────────────────────────────┤
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    应用层 (Applications)                        │    │
-│  │  app.c: PPM接收 / ADC采样 / UART控制 / Nunchuk / PAS / IMU     │    │
-│  │  app_configuration: 控制方式配置 (油门曲线/安全启动等)           │    │
-│  └───────────────┬──────────────────────────────┬──────────────────┘    │
-│                  │ set_current/set_duty/set_rpm │                       │
-│  ┌───────────────▼──────────────────────────────────────────────────┐   │
-│  │                电机控制接口层 (mc_interface)                      │   │
-│  │  • 统一电机控制入口 (duty/current/speed/position/brake)          │   │
-│  │  • 故障管理 & 保护限制 (update_override_limits)                  │   │
-│  │  • ADC采样波形存储 & 数据转发                                    │   │
-│  │  • Ah/Wh积分 & 里程计                                            │   │
-│  └───────┬──────────────────────────────┬───────────────────────────┘   │
-│          │ MOTOR_TYPE_BLDC/DC           │ MOTOR_TYPE_FOC                │
-│  ┌───────▼───────────────┐   ┌─────────▼──────────────────────────┐    │
-│  │   mcpwm (六步换相)     │   │      mcpwm_foc (FOC矢量控制)       │    │
-│  │  • BLDC 梯形波驱动     │   │  • Clarke/Park 变换               │    │
-│  │  • DC 有刷电机         │   │  • 电流 PI 控制                   │    │
-│  │  • 霍尔换相            │   │  • 磁链观测器 (7种算法)           │    │
-│  │  • BEMF过零检测        │   │  • 锁相环 (PLL)                   │    │
-│  │  • 电流/速度控制       │   │  • SVPWM 调制                    │    │
-│  └───────────────────────┘   │  • HFI 高频注入                   │    │
-│                               │  • MTPA/弱磁控制                   │    │
-│                               └───────────────────────────────────┘    │
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                   硬件抽象层 (hwconf/hw.h)                       │    │
-│  │  • ADC电流采样宏  • 栅极驱动SPI宏  • 温度传感器宏               │    │
-│  │  • GPIO引脚定义   • CAN配置       • 编码器接口                   │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      通信层 (comm/)                              │    │
-│  │  CAN(UAVCAN/VESC协议) │ USB VCP │ UART │ NRF 无线               │    │
-│  │  packet.c: SLIP帧协议 │ commands.c: 160+ 命令分发               │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                  RTOS 层 (ChibiOS/RT)                            │    │
-│  │  线程调度 │ 临界区 │ 事件系统 │ 邮箱 │ HAL驱动                    │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                           │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                   硬件层 (STM32F405RG)                            │    │
-│  │  TIM1 PWM → 栅极驱动 → MOSFET H桥 → 电机绕组                    │    │
-│  │  ADC1/2/3 → 电流采样   │   SPI → 栅极驱动配置                    │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph AppLayer["应用层 Applications"]
+        App["app.c: PPM接收 / ADC采样 / UART控制 / Nunchuk / PAS / IMU"]
+        AppConfig["app_configuration: 控制方式配置"]
+    end
+    subgraph McIfLayer["电机控制接口层 mc_interface"]
+        McIf["统一电机控制入口 duty/current/speed/position/brake"]
+        Fault["故障管理 & 保护限制 update_override_limits"]
+        ADCWave["ADC采样波形存储 & 数据转发"]
+        AhWh["Ah/Wh积分 & 里程计"]
+    end
+    subgraph BLDC["mcpwm 六步换相"]
+        BLDC1["BLDC 梯形波驱动"]
+        BLDC2["DC 有刷电机"]
+        BLDC3["霍尔换相"]
+        BLDC4["BEMF过零检测"]
+        BLDC5["电流/速度控制"]
+    end
+    subgraph FOC["mcpwm_foc FOC矢量控制"]
+        FOC1["Clarke/Park 变换"]
+        FOC2["电流 PI 控制"]
+        FOC3["磁链观测器 7种算法"]
+        FOC4["锁相环 PLL"]
+        FOC5["SVPWM 调制"]
+        FOC6["HFI 高频注入"]
+        FOC7["MTPA/弱磁控制"]
+    end
+    subgraph HWLayer["硬件抽象层 hwconf/hw.h"]
+        HW1["ADC电流采样宏 / 栅极驱动SPI宏 / 温度传感器宏"]
+        HW2["GPIO引脚定义 / CAN配置 / 编码器接口"]
+    end
+    subgraph CommLayer["通信层 comm/"]
+        Comm1["CAN UAVCAN/VESC协议 / USB VCP / UART / NRF 无线"]
+        Comm2["packet.c: SLIP帧协议 / commands.c: 160+ 命令分发"]
+    end
+    subgraph RTOSLayer["RTOS层 ChibiOS/RT"]
+        RTOS1["线程调度 / 临界区 / 事件系统 / 邮箱 / HAL驱动"]
+    end
+    subgraph HwReal["硬件层 STM32F405RG"]
+        HwR1["TIM1 PWM → 栅极驱动 → MOSFET H桥 → 电机绕组"]
+        HwR2["ADC1/2/3 → 电流采样 / SPI → 栅极驱动配置"]
+    end
+    AppLayer --> McIfLayer
+    McIfLayer --> BLDC
+    McIfLayer --> FOC
+    BLDC --> HWLayer
+    FOC --> HWLayer
+    HWLayer --> CommLayer
+    HWLayer --> RTOSLayer
+    RTOSLayer --> HwReal
 ```
 
 ### 3.2 数据流向图
 
-```
-                          ┌──────────────┐
-                          │  app_config  │  (PPM/ADC/UART控制信号)
-                          └──────┬───────┘
-                                 │ set_current/rpm/duty
-                                 ▼
-  ┌──────────────────────────────────────────────────────────────────┐
-  │                        mc_interface                              │
-  │                                                                   │
-  │  ┌──────────────┐   ┌───────────────┐   ┌──────────────────┐    │
-  │  │ mc_state     │   │ mc_control    │   │ mc_configuration │    │
-  │  │ OFF→DETECT   │   │ _mode         │   │ (595行配置)       │    │
-  │  │ →RUNNING→    │   │ DUTY/SPEED/   │   │ 限制/保护参数     │    │
-  │  │ FULL_BRAKE   │   │ CURRENT/POS   │   └──────────────────┘    │
-  │  └──────────────┘   └───────────────┘                            │
-  │         │                  │                                      │
-  │         ▼                  ▼                                      │
-  │  ┌──────────────────────────────────────────────────────────┐    │
-  │  │              motor_all_state_t (FOC: 248行)               │    │
-  │  │  id/iq/vd/vq/phase/speed/duty/i_alpha/i_beta/...         │    │
-  │  │  observer_state (x1/x2/lambda_est)                       │    │
-  │  │  hfi_state_t (FFT bins/angle/error)                      │    │
-  │  │  mc_audio_state (音频调制)                                │    │
-  │  └──────────────────────────────────────────────────────────┘    │
-  └───────────────────────────┬──────────────────────────────────────┘
-                              │
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-  ┌───────────────┐   ┌──────────────┐   ┌──────────────┐
-  │  电流PI控制器  │   │  观测器/PLL  │   │  SVPWM调制   │
-  │  id/iq→vd/vq  │   │  x1/x2→角度  │   │  vα/vβ→占空比│
-  └───────────────┘   └──────────────┘   └──────┬───────┘
-                                                 │
-                    ┌────────────────────────────┘
-                    ▼
-  ┌─────────────────────────────────────────────────────────────────┐
-  │             TIM1/TIM8 CC1/CC2/CC3 → 栅极驱动器 → MOSFET          │
-  │             TIMER_UPDATE_DUTY_M1(duty1, duty2, duty3)            │
-  └─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    AppConfig["app_config PPM/ADC/UART控制信号"] --> McIf["mc_interface"]
+    McIf --> McState["mc_state OFF→DETECT→RUNNING→FULL_BRAKE"]
+    McIf --> McCtrl["mc_control_mode DUTY/SPEED/CURRENT/POS"]
+    McIf --> McConfig["mc_configuration 595行配置 限制/保护参数"]
+    McState --> MotorState["motor_all_state_t FOC: 248行"]
+    McCtrl --> MotorState
+    MotorState --> CurPI["电流PI控制器 id/iq→vd/vq"]
+    MotorState --> ObsPLL["观测器/PLL x1/x2→角度"]
+    MotorState --> SVPWM2["SVPWM调制 vα/vβ→占空比"]
+    SVPWM2 --> TIM1["TIM1/TIM8 CC1/CC2/CC3 → 栅极驱动器 → MOSFET"]
 ```
 
 ---
@@ -323,31 +294,15 @@ static THD_WORKING_AREA(can_status_thread_wa, 512);   // CAN状态发送 (可配
 
 ### 5.1 mc_state 电机控制状态
 
-```
-                    ┌──────────────────────────────────────┐
-                    │             mc_state 状态机           │
-                    └──────────────────────────────────────┘
-
-     ┌─────────┐   set_current/set_duty    ┌──────────────┐
-     │         │──────────────────────────▶│              │
-     │  OFF    │                           │  DETECTING   │
-     │  (0)    │◀──────────────────────────│  (1)         │
-     │         │   检测失败/超时            │              │
-     └─────────┘                           └──────┬───────┘
-          ▲                                       │ 检测成功
-          │                                       ▼
-          │                               ┌──────────────┐
-          │                   释放电机    │              │
-          │              ◀───────────────│  RUNNING     │
-          │                               │  (2)         │
-          │                               └──────┬───────┘
-          │                                      │ full_brake
-          │                                      ▼
-          │                               ┌──────────────┐
-          │                               │  FULL_BRAKE  │
-          └───────────────────────────────│  (3)         │
-                  制动完成/超时            │              │
-                                          └──────────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> OFF
+    OFF --> DETECTING: set_current/set_duty
+    DETECTING --> OFF: 检测失败/超时
+    DETECTING --> RUNNING: 检测成功
+    RUNNING --> OFF: 释放电机
+    RUNNING --> FULL_BRAKE: full_brake
+    FULL_BRAKE --> OFF: 制动完成/超时
 ```
 
 ### 5.2 mc_control_mode 控制模式
@@ -566,30 +521,13 @@ static volatile motor_all_state_t m_motor_2;  // TIM8 控制
 
 ### 8.1 四大通信通道
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        VESC 通信子系统                               │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────┐  ┌────────────┐  │
-│  │  CAN Bus     │  │  USB VCP     │  │  UART    │  │  NRF 无线  │  │
-│  │  (CAN1)      │  │  (CDC ACM)   │  │          │  │  (nRF24L01)│  │
-│  └──────┬───────┘  └──────┬───────┘  └────┬─────┘  └─────┬──────┘  │
-│         │                 │               │              │          │
-│         ▼                 ▼               ▼              ▼          │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                  packet.c (SLIP 帧协议)                      │   │
-│  │  • 帧头: 0x02 (短帧) / 0x03 (长帧)                           │   │
-│  │  • 载荷: [command_id][payload...][crc16]                     │   │
-│  │  • 帧尾: 0x03                                               │   │
-│  │  • 最大载荷: PACKET_MAX_PL_LEN (512字节)                      │   │
-│  └──────────────────────────┬──────────────────────────────────┘   │
-│                             ▼                                       │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │               commands.c (命令分发, 160+ 命令)                │   │
-│  │  COMM_GET_VALUES / COMM_SET_DUTY / COMM_SET_CURRENT / ...    │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    CAN["CAN Bus CAN1"] --> Packet["packet.c SLIP帧协议"]
+    USB["USB VCP CDC ACM"] --> Packet
+    UART["UART"] --> Packet
+    NRF["NRF 无线 nRF24L01"] --> Packet
+    Packet --> Commands["commands.c 命令分发 160+命令"]
 ```
 
 ### 8.2 CAN 模式

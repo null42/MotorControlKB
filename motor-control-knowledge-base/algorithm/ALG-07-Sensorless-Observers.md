@@ -37,41 +37,41 @@
 
 **系统架构：**
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    无感FOC控制系统框图                       │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  速度给定 → [速度环PI] → Iq给定                              │
-│                    ↓                                         │
-│  ┌──────────────────────────────────────────────┐          │
-│  │           电流环 (内环，快速响应)              │          │
-│  │  Id给定 → [电流环PI] → Ud                     │          │
-│  │  Iq反馈 → [电流环PI] → Uq                     │          │
-│  └──────────────────────────────────────────────┘          │
-│                    ↓                                         │
-│           [逆Park变换] → Uα, Uβ                              │
-│                    ↓                                         │
-│            [SVPWM调制] → 三相PWM                              │
-│                    ↓                                         │
-│              [逆变器] → 三相电压                              │
-│                    ↓                                         │
-│              [PMSM电机]                                       │
-│                    ↓                                         │
-│    ┌───────────────┴───────────────┐                        │
-│    │                               │                        │
-│  ┌─────────────┐                电流采样                     │
-│  │   观测器    │ ← Uα,Uβ,Iα,Iβ    │                        │
-│  │ (位置/速度) │                  ↓                        │
-│  └─────────────┘              Ia, Ib, Ic                    │
-│    │                               │                        │
-│    ↓                               │                        │
-│  位置/速度估算                      │                        │
-│    │                               │                        │
-│    └──────────→ [Park变换] ←───────┘                        │
-│                    ↓                                         │
-│                 Id, Iq                                       │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph 无感FOC控制系统
+        speed_ref[速度给定] --> speed_pi[速度环PI]
+        speed_pi --> iq_ref[Iq给定]
+
+        subgraph 电流环_内环快速响应
+            id_ref[Id给定] --> id_pi[电流环PI]
+            id_pi --> ud[Ud]
+            iq_ref --> iq_pi[电流环PI]
+            iq_pi --> uq[Uq]
+        end
+
+        ud --> inv_park[逆Park变换]
+        uq --> inv_park
+        inv_park --> uab[Uα, Uβ]
+        uab --> svpwm[SVPWM调制]
+        svpwm --> pwm_out[三相PWM]
+        pwm_out --> inverter[逆变器]
+        inverter --> voltage[三相电压]
+        voltage --> motor[PMSM电机]
+
+        motor --> current_sample[Ia, Ib, Ic 电流采样]
+
+        uab --> observer[观测器<br/>位置/速度]
+        current_sample --> observer
+        current_sample --> park[Park变换]
+        observer --> pos_speed[位置/速度估算]
+        pos_speed --> park
+
+        park --> id_iq[Id, Iq]
+        id_iq --> id_pi
+        id_iq --> iq_pi
+        id_iq --> speed_pi
+    end
 ```
 
 ---

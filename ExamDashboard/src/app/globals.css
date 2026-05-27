@@ -68,6 +68,68 @@
   .hljs-deletion { color: #cf222e; }
   .hljs-emphasis { font-style: italic; }
   .hljs-strong { font-weight: bold; }
+
+  .mermaid-src {
+    display: none;
+  }
+  .mermaid-rendered {
+    margin: 1.5em 0;
+    padding: 1.25rem;
+    background: hsl(220 15% 8%);
+    border: 1px solid hsl(220 15% 18%);
+    border-radius: 0.75rem;
+    overflow-x: auto;
+  }
+  .mermaid-rendered svg {
+    max-width: 100%;
+    height: auto;
+  }
+  .mermaid-rendered .node rect,
+  .mermaid-rendered .node polygon,
+  .mermaid-rendered .node circle {
+    fill: #1a3a5c !important;
+    stroke: #4fc3f7 !important;
+  }
+  .mermaid-rendered .nodeLabel,
+  .mermaid-rendered .node text {
+    color: #e2e8f0 !important;
+    fill: #e2e8f0 !important;
+  }
+  .mermaid-rendered .edgeLabel {
+    color: #e2e8f0 !important;
+    fill: #e2e8f0 !important;
+    background-color: #1e293b !important;
+  }
+  .mermaid-rendered .edgePath .path {
+    stroke: #94a3b8 !important;
+  }
+  .mermaid-rendered .edgePath marker path {
+    fill: #94a3b8 !important;
+    stroke: #94a3b8 !important;
+  }
+  .mermaid-rendered .cluster rect {
+    fill: #162032 !important;
+    stroke: #334155 !important;
+  }
+  .mermaid-rendered .cluster-label {
+    color: #e2e8f0 !important;
+    fill: #e2e8f0 !important;
+  }
+  .mermaid-rendered .label {
+    color: #e2e8f0 !important;
+    fill: #e2e8f0 !important;
+  }
+  .mermaid-rendered span {
+    color: #e2e8f0 !important;
+  }
+  .mermaid-rendered .stateNode rect {
+    fill: #1a3a5c !important;
+    stroke: #4fc3f7 !important;
+  }
+  .mermaid-rendered .stateNode .label {
+    color: #e2e8f0 !important;
+    fill: #e2e8f0 !important;
+  }
 }
 
 @layer components {
