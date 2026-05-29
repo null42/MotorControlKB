@@ -416,3 +416,9 @@ Tustin离散化后：u_d(k)=a·u_d(k-1)+b·[e(k)-e(k-1)]
 - 知识体系：控制理论基础
 - 模块名称：PID 控制原理
 - 算法关联：零极点对消→$K_p=L_s\omega_c,K_i=R_s\omega_c$、PI离散化→DSP实现、anti-windup→积分饱和
+
+---
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_VELOCITY_LOOP (4)，关键操作：在 init_CTRL() 中分别将 PID_Speed->Kp 或 Ki_CODE 设为零，观察 Speed 子图稳态误差和超调变化

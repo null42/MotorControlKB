@@ -743,3 +743,8 @@ HFI与高速观测器的全速域组合是当前工业主流方案：
 | PLL方程 | $\dot{\theta} = K_p \varepsilon + K_i \int \varepsilon$ | 角度跟踪 |
 | 全速域切换 | $\theta = (1-K)\theta_{HFI} + K\theta_{SMO}$ | 线性加权 |
 | 注入频率选择 | $f_{base} \ll f_h \ll f_{sw}/10$ | 频率约束 |
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_FOC_SENSORLESS (31)，关键操作：在低速（<100rpm）观察 HFI 注入信号和观测器角度误差

@@ -118,11 +118,6 @@ const loadDocs = async () => {
   try {
     const response = await axios.get<KnowledgeBase>('/api/docs/list')
     knowledgeBase.value = response.data
-    if (knowledgeBase.value?.hardware.modules.length) {
-      const firstMod = knowledgeBase.value.hardware.modules[0]
-      activeDoc.value = firstMod.path
-      emit('select', firstMod.path)
-    }
   } catch (error) {
     console.error('Failed to load docs:', error)
   }
@@ -217,6 +212,18 @@ onMounted(() => {
                     检验题目
                   </div>
                 </div>
+                <div v-if="mod.tools && mod.tools.length" class="tools-links">
+                  <div
+                    v-for="tool in mod.tools"
+                    :key="tool.id"
+                    class="nav-item sub-item tool-item"
+                    :class="{ active: activeDoc === tool.path }"
+                    @click="handleSelect(tool.path)"
+                  >
+                    <span class="module-icon">{{ tool.title.substring(0, 2) }}</span>
+                    {{ tool.title.substring(2) }}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -248,6 +255,18 @@ onMounted(() => {
                 >
                   <span class="module-icon">📝</span>
                   检验题目
+                </div>
+              </div>
+              <div v-if="mod.tools && mod.tools.length" class="tools-links">
+                <div
+                  v-for="tool in mod.tools"
+                  :key="tool.id"
+                  class="nav-item sub-item tool-item"
+                  :class="{ active: activeDoc === tool.path }"
+                  @click="handleSelect(tool.path)"
+                >
+                  <span class="module-icon">{{ tool.title.substring(0, 2) }}</span>
+                  {{ tool.title.substring(2) }}
                 </div>
               </div>
             </div>
@@ -473,6 +492,19 @@ onMounted(() => {
 
 .assessment-link {
   margin: 0;
+}
+
+.tools-links {
+  margin: 0;
+}
+
+.tool-item {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.tool-item:hover {
+  color: var(--primary);
 }
 
 .cross-ref-item {

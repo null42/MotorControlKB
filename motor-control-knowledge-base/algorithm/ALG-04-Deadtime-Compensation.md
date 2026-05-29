@@ -325,3 +325,8 @@ $$\Delta V = V_{dc} \cdot \frac{100ns}{50\mu s} = 0.2\% \cdot V_{dc}$$
 **与 MC_LIB 对比**:
 - MC_LIB: `MCFOC_DeadTime_COMP_F()` 独立死区补偿函数
 - hpm_MCL: 编译宏控制使能，补偿量集成在控制链中
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_INVERTER_NONLINEARITY_SENSORLESS (49)，关键操作：在 ACMSim.h 中改 `__INVERTER_NONLINEARITY` 宏（0=理想, 1=Sul1996, 2=Sigmoid, 3=LUT），对比电流波形畸变程度

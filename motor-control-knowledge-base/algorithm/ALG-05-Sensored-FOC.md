@@ -1282,3 +1282,8 @@ SVPWM输出电压矢量的精度受硬件约束：
 | 速度环PI | $K_{p,spd} = J \omega_{c,spd} / K_t$ | 速度环设计 |
 | SVPWM调制范围 | $V_{ref} \leq U_{dc}/\sqrt{3}$ | 线性调制区 |
 | 速度差分 | $\omega = \Delta\theta / T_s$ | 角度差分法 |
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_VELOCITY_LOOP (4)，关键操作：修改 pmsm_comm.c 的 _user_commands() 中转速指令序列和负载阶跃，观察 Speed/Torque 子图

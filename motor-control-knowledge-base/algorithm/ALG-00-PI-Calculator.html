@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电流环PI参数整定计算器</title>
+<style>
+  /* ===== 全局重置与基础 ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; scroll-behavior: smooth; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    background: #eef1f5;
+    color: #2c3e50;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ===== 头部 ===== */
+  .header {
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b3a5c 60%, #274472 100%);
+    color: #fff;
+    padding: 28px 32px 22px;
+    text-align: center;
+    box-shadow: 0 4px 18px rgba(13,27,42,0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .header::after {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #00b4d8, #48cae4, #90e0ef, #48cae4, #00b4d8);
+    background-size: 200% 100%;
+    animation: headerBar 4s linear infinite;
+  }
+  @keyframes headerBar { 0%{background-position:0 0} 100%{background-position:200% 0} }
+  .header h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 6px; }
+  .header p { font-size: 0.92rem; opacity: 0.82; font-weight: 300; }
+
+  /* ===== 容器 ===== */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px 40px; }
+
+  /* ===== 卡片通用 ===== */
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    padding: 24px 28px;
+    margin-bottom: 22px;
+    transition: box-shadow 0.2s;
+  }
+  .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.11); }
+  .card-title {
+    font-size: 1.12rem;
+    font-weight: 700;
+    color: #1b3a5c;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8ecf1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon { font-size: 1.2rem; }
+
+  /* ===== 输入区域 ===== */
+  .input-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px 28px;
+  }
+  .input-group { display: flex; flex-direction: column; }
+  .input-group label {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 5px;
+  }
+  .input-group label .unit {
+    font-weight: 400;
+    color: #7f8c8d;
+    font-size: 0.82rem;
+  }
+  .input-group input[type="number"] {
+    border: 1.5px solid #cdd5de;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 1rem;
+    color: #2c3e50;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  .input-group input[type="number"]:focus {
+    border-color: #274472;
+    box-shadow: 0 0 0 3px rgba(39,68,114,0.12);
+  }
+
+  /* ===== 电机快速选择（新增） ===== */
+  .motor-select-section { margin-bottom: 16px; padding: 14px; background: #f0f4f8; border-radius: 8px; border: 1px solid #d0d8e2; }
+  .motor-select-label { display: block; font-size: 0.9rem; font-weight: 600; color: #1b3a5c; margin-bottom: 6px; }
+  .motor-select-dropdown {
+    width: 100%; max-width: 100%;
+    padding: 10px 12px;
+    font-size: 0.92rem;
+    border: 1px solid #b0bec5;
+    border-radius: 6px;
+    background: #fff;
+    color: #1b3a5c;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .motor-select-dropdown:focus { border-color: #00d4ff; box-shadow: 0 0 0 3px rgba(0,212,255,0.15); }
+  .motor-select-dropdown optgroup { font-weight: 700; color: #1b3a5c; font-size: 0.85rem; }
+  .motor-info-box {
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, #e8f4fd, #f0f7ff);
+    border-radius: 6px;
+    border-left: 3px solid #00d4ff;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: #34495e;
+    display: none;
+  }
+  .motor-info-box.visible { display: block; animation: fadeIn 0.25s ease-out; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+  .motor-info-box strong { color: #0d47a1; }
+
+  /* ===== α 滑块 ===== */
+  .slider-section { margin-top: 18px; }
+  .slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .slider-header label { font-size: 0.88rem; font-weight: 600; color: #34495e; }
+  .slider-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 4px;
+    min-width: 100px;
+    text-align: center;
+  }
+  .slider-value.safe { background: #d5f5e3; color: #1e8449; }
+  .slider-value.warn { background: #fef9e7; color: #b7950b; }
+  .slider-value.danger { background: #fadbd8; color: #c0392b; }
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    background: linear-gradient(90deg, #27ae60 0%, #f1c40f 50%, #e74c3c 100%);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #1b3a5c;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    cursor: grab;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid #1b3a5c;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    cursor: grab;
+  }
+  .slider-limits {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: #95a5a6;
+    margin-top: 2px;
+  }
+
+  /* ===== 结果区域 ===== */
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+  }
+  .result-item {
+    background: #f7f9fc;
+    border-radius: 8px;
+    padding: 14px 16px;
+    text-align: center;
+    border: 1.5px solid #e4e9f0;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .result-item:hover { transform: translateY(-2px); border-color: #90e0ef; }
+  .result-item .label { font-size: 0.78rem; color: #7f8c8d; margin-bottom: 4px; }
+  .result-item .value { font-size: 1.3rem; font-weight: 700; color: #1b3a5c; }
+  .result-item .sub { font-size: 0.72rem; color: #95a5a6; margin-top: 2px; }
+
+  /* ===== 安全指示条 ===== */
+  .safety-bar {
+    margin-top: 16px;
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .safety-bar.safe { background: #d5f5e3; color: #1e8449; border: 1.5px solid #82e0aa; }
+  .safety-bar.warn { background: #fef9e7; color: #9a7d0a; border: 1.5px solid #f9e79f; }
+  .safety-bar.danger { background: #fadbd8; color: #c0392b; border: 1.5px solid #f1948a; }
+  .safety-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .safe .safety-dot { background: #27ae60; box-shadow: 0 0 8px #27ae60; }
+  .warn .safety-dot { background: #f39c12; box-shadow: 0 0 8px #f39c12; }
+  .danger .safety-dot { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; }
+
+  /* ===== 对比表格 ===== */
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .compare-table thead th {
+    background: #1b3a5c;
+    color: #fff;
+    padding: 10px 12px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .compare-table thead th:first-child { border-radius: 6px 0 0 0; }
+  .compare-table thead th:last-child { border-radius: 0 6px 0 0; }
+  .compare-table tbody td {
+    padding: 9px 12px;
+    text-align: center;
+    border-bottom: 1px solid #ecf0f1;
+  }
+  .compare-table tbody tr:hover { background: #f0f6fc; }
+  .compare-table tbody tr.active-row { background: #e8f4fd; font-weight: 600; }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-safe { background: #d5f5e3; color: #1e8449; }
+  .badge-warn { background: #fef9e7; color: #9a7d0a; }
+  .badge-danger { background: #fadbd8; color: #c0392b; }
+
+  /* ===== Canvas 区域 ===== */
+  .canvas-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 768px) {
+    .canvas-wrapper { grid-template-columns: 1fr; }
+  }
+  .canvas-box {
+    background: #fafbfc;
+    border: 1.5px solid #e4e9f0;
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .canvas-box h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+  }
+
+  /* ===== 导出按钮 ===== */
+  .export-bar {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 8px;
+  }
+  .btn {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #1b3a5c, #274472);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(27,58,92,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(27,58,92,0.4); }
+  .btn-secondary {
+    background: #ecf0f1;
+    color: #2c3e50;
+  }
+  .btn-secondary:hover { background: #d5dbdb; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1b3a5c;
+    color: #fff;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    opacity: 0;
+    transition: all 0.35s ease;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ===== 公式说明 ===== */
+  .formula-box {
+    background: #f7f9fc;
+    border-left: 4px solid #274472;
+    padding: 14px 18px;
+    border-radius: 0 6px 6px 0;
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.8;
+  }
+  .formula-box code {
+    background: #e8ecf1;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 0.88em;
+    color: #1b3a5c;
+  }
+
+  /* ===== 响应式 ===== */
+  @media (max-width: 600px) {
+    .header h1 { font-size: 1.3rem; }
+    .container { padding: 14px 10px 30px; }
+    .card { padding: 16px 14px; }
+    .result-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- 头部 -->
+<div class="header">
+  <h1>电流环 PI 参数整定计算器</h1>
+  <p>基于极零对消法（Pole-Zero Cancellation）的一阶电流环PI调节器参数计算与可视化</p>
+</div>
+
+<div class="container">
+
+  <!-- 输入参数卡片 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">&#9881;</span> 电机电气参数输入</div>
+
+    <!-- 电机选择（新增） -->
+    <div class="motor-select-section">
+      <label for="motorSelect" class="motor-select-label">&#128295; 快速选择真实电机参数：</label>
+      <select id="motorSelect" class="motor-select-dropdown">
+        <option value="">-- 自定义输入 --</option>
+        <optgroup label="&#127919; 标准教学电机（真实参数）">
+          <option value="std_200w_ipmsm">200W IPMSM (Ld=0.08mH, Rs=0.06Ω, 24V/200W)</option>
+        </optgroup>
+        <optgroup label="&#128218; 参考对比电机">
+          <option value="ref_small_motor">小型高速PMSM (L=0.104mH, R=0.105Ω)</option>
+        </optgroup>
+        <optgroup label="&#128737; 云台/航模电机（低速大扭矩）">
+          <option value="gimbal_4310">4310云台 (L=4.74mH, R=10.9Ω, 16V/512rpm/28极)</option>
+        </optgroup>
+      </select>
+      <div id="motorInfo" class="motor-info-box"></div>
+    </div>
+
+    <div class="input-grid">
+      <div class="input-group">
+        <label>相电感 L <span class="unit">(mH)</span></label>
+        <input type="number" id="inputL" value="0.08" step="0.001" min="0.001">
+      </div>
+      <div class="input-group">
+        <label>相电阻 R <span class="unit">(&Omega;)</span></label>
+        <input type="number" id="inputR" value="0.06" step="0.001" min="0.001">
+      </div>
+      <div class="input-group">
+        <label>PWM 频率 f<sub>PWM</sub> <span class="unit">(kHz)</span></label>
+        <input type="number" id="inputFPWM" value="20" step="1" min="1">
+      </div>
+    </div>
+
+    <!-- α 滑块 -->
+    <div class="slider-section">
+      <div class="slider-header">
+        <label>期望带宽 &alpha; <span class="unit">(rad/s)</span></label>
+        <span id="alphaDisplay" class="slider-value safe">3000</span>
+      </div>
+      <input type="range" id="alphaSlider" min="100" max="20000" step="50" value="3000">
+      <div class="slider-limits">
+        <span>100</span>
+        <span id="alphaMaxLabel">&alpha;<sub>max</sub> = --</span>
+        <span>20000</span>
+      </div>
+    </div>
+
+    <!-- 公式说明 -->
+    <div class="formula-box">
+      <strong>核心公式（极零对消法）：</strong><br>
+      <code>&tau; = L / R</code>（电气时间常数）&rarr;
+      <code>Kp = &alpha; &times; L</code> &rarr;
+      <code>Ki = &alpha; &times; R</code><br>
+      闭环传递函数：<code>G<sub>cl</sub>(s) = &alpha; / (s + &alpha;)</code>，等效为一阶惯性环节<br>
+      <code>&alpha;<sub>max</sub> = 2&pi; &times; f<sub>PWM</sub> / 20</code>（建议不超过PWM频率的1/20）
+    </div>
+  </div>
+
+  <!-- 计算结果卡片 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">&#9889;</span> 计算结果</div>
+    <div class="result-grid">
+      <div class="result-item">
+        <div class="label">电气时间常数 &tau;</div>
+        <div class="value" id="resTau">--</div>
+        <div class="sub">ms</div>
+      </div>
+      <div class="result-item">
+        <div class="label">比例增益 Kp</div>
+        <div class="value" id="resKp">--</div>
+        <div class="sub">V/A</div>
+      </div>
+      <div class="result-item">
+        <div class="label">积分增益 Ki</div>
+        <div class="value" id="resKi">--</div>
+        <div class="sub">V/(A&middot;s)</div>
+      </div>
+      <div class="result-item">
+        <div class="label">闭环时间常数 &tau;<sub>cl</sub></div>
+        <div class="value" id="resTauCl">--</div>
+        <div class="sub">ms</div>
+      </div>
+      <div class="result-item">
+        <div class="label">加速比 &tau; / &tau;<sub>cl</sub></div>
+        <div class="value" id="resAccel">--</div>
+        <div class="sub">&times;</div>
+      </div>
+      <div class="result-item">
+        <div class="label">上升时间 (10%~90%)</div>
+        <div class="value" id="resRise">--</div>
+        <div class="sub">ms</div>
+      </div>
+      <div class="result-item">
+        <div class="label">闭环带宽</div>
+        <div class="value" id="resBW">--</div>
+        <div class="sub">Hz</div>
+      </div>
+      <div class="result-item">
+        <div class="label">&alpha;<sub>max</sub> 推荐上限</div>
+        <div class="value" id="resAlphaMax">--</div>
+        <div class="sub">rad/s</div>
+      </div>
+    </div>
+
+    <!-- 安全指示 -->
+    <div id="safetyBar" class="safety-bar safe">
+      <span class="safety-dot"></span>
+      <span id="safetyText">--</span>
+    </div>
+  </div>
+
+  <!-- 对比表格卡片 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">&#128202;</span> 不同 &alpha; 值对比</div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>&alpha; (rad/s)</th>
+          <th>Kp (V/A)</th>
+          <th>Ki (V/(A&middot;s))</th>
+          <th>&tau;<sub>cl</sub> (ms)</th>
+          <th>上升时间 (ms)</th>
+          <th>带宽 (Hz)</th>
+          <th>安全性</th>
+        </tr>
+      </thead>
+      <tbody id="compareBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 图表卡片 -->
+  <div class="card">
+    <div class="card-title"><span class="icon">&#127912;</span> 频域 / 时域响应可视化</div>
+    <div class="canvas-wrapper">
+      <div class="canvas-box">
+        <h3>开环 Bode 图（幅频特性）</h3>
+        <canvas id="bodeCanvas" width="500" height="340"></canvas>
+      </div>
+      <div class="canvas-box">
+        <h3>闭环阶跃响应</h3>
+        <canvas id="stepCanvas" width="500" height="340"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导出按钮 -->
+  <div class="export-bar">
+    <button class="btn btn-primary" onclick="exportParams()">&#128203; 导出参数</button>
+    <button class="btn btn-secondary" onclick="resetDefaults()">&#8634; 恢复默认</button>
+  </div>
+
+</div>
+
+<!-- Toast 提示 -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================================================
+ *  电流环 PI 参数整定计算器 - 核心逻辑
+ *  基于极零对消法，适用于表贴式PMSM d/q轴电流环
+ * ====================================================== */
+
+// ---- DOM 引用 ----
+const elL       = document.getElementById('inputL');
+const elR       = document.getElementById('inputR');
+const elFPWM    = document.getElementById('inputFPWM');
+const elSlider  = document.getElementById('alphaSlider');
+const elAlphaD  = document.getElementById('alphaDisplay');
+
+// ---- 工具函数 ----
+function fmt(v, d) {
+  // 格式化数值，d 为小数位数
+  if (v === undefined || v === null || isNaN(v)) return '--';
+  return v.toFixed(d);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ---- 核心计算 ----
+function calc() {
+  const L_H    = parseFloat(elL.value) * 1e-3;        // mH -> H
+  const R      = parseFloat(elR.value);                 // Ω
+  const fPWM   = parseFloat(elFPWM.value) * 1e3;        // kHz -> Hz
+  const alpha  = parseFloat(elSlider.value);             // rad/s
+
+  if (!L_H || !R || !fPWM || !alpha || L_H <= 0 || R <= 0 || fPWM <= 0 || alpha <= 0) return;
+
+  const tau       = L_H / R;                            // 电气时间常数 (s)
+  const Kp        = alpha * L_H;                        // V/A
+  const Ki        = alpha * R;                           // V/(A·s)
+  const tau_cl    = 1 / alpha;                           // 闭环时间常数 (s)
+  const accel     = tau / tau_cl;                        // 加速比
+  const riseTime  = 1.8 / alpha;                         // 上升时间 (s)
+  const bw        = alpha / (2 * Math.PI);               // 带宽 (Hz)
+  const alphaMax  = 2 * Math.PI * fPWM / 20;            // 推荐α上限
+
+  // ---- 更新结果 ----
+  document.getElementById('resTau').textContent      = fmt(tau * 1e3, 4);
+  document.getElementById('resKp').textContent       = fmt(Kp, 6);
+  document.getElementById('resKi').textContent       = fmt(Ki, 4);
+  document.getElementById('resTauCl').textContent    = fmt(tau_cl * 1e3, 4);
+  document.getElementById('resAccel').textContent    = fmt(accel, 2);
+  document.getElementById('resRise').textContent     = fmt(riseTime * 1e3, 4);
+  document.getElementById('resBW').textContent       = fmt(bw, 1);
+  document.getElementById('resAlphaMax').textContent = fmt(alphaMax, 1);
+  document.getElementById('alphaMaxLabel').innerHTML  = '&alpha;<sub>max</sub> = ' + fmt(alphaMax, 0);
+
+  // ---- 安全指示 ----
+  const ratio = alpha / alphaMax;
+  const bar   = document.getElementById('safetyBar');
+  const txt   = document.getElementById('safetyText');
+  bar.className = 'safety-bar';
+  elAlphaD.className = 'slider-value';
+
+  if (ratio <= 0.7) {
+    bar.classList.add('safe');
+    elAlphaD.classList.add('safe');
+    txt.textContent = '安全：α 远低于推荐上限，系统稳定裕度充足';
+  } else if (ratio <= 1.0) {
+    bar.classList.add('warn');
+    elAlphaD.classList.add('warn');
+    txt.textContent = '注意：α 接近推荐上限（' + (ratio * 100).toFixed(0) + '%），需关注数字延迟与噪声影响';
+  } else {
+    bar.classList.add('danger');
+    elAlphaD.classList.add('danger');
+    txt.textContent = '危险：α 超出推荐上限（' + (ratio * 100).toFixed(0) + '%），可能导致振荡或失稳！';
+  }
+  elAlphaD.textContent = alpha;
+
+  // ---- 对比表格 ----
+  buildCompareTable(L_H, R, fPWM, alpha);
+
+  // ---- 绘图 ----
+  drawBode(L_H, R, alpha);
+  drawStep(alpha);
+}
+
+// ---- 对比表格 ----
+function buildCompareTable(L_H, R, fPWM, currentAlpha) {
+  const alphaMax = 2 * Math.PI * fPWM / 20;
+  const alphas = [1000, 2000, 3000, 4000, 5000];
+  const tbody = document.getElementById('compareBody');
+  let html = '';
+  for (const a of alphas) {
+    const kp   = a * L_H;
+    const ki   = a * R;
+    const tcl  = (1 / a) * 1e3;
+    const rise = (1.8 / a) * 1e3;
+    const bw   = a / (2 * Math.PI);
+    const r    = a / alphaMax;
+    const active = (a === currentAlpha) ? ' class="active-row"' : '';
+    let badge = '';
+    if (r <= 0.7) badge = '<span class="badge badge-safe">安全</span>';
+    else if (r <= 1.0) badge = '<span class="badge badge-warn">注意</span>';
+    else badge = '<span class="badge badge-danger">危险</span>';
+
+    html += `<tr${active}>
+      <td>${a}</td>
+      <td>${fmt(kp, 6)}</td>
+      <td>${fmt(ki, 4)}</td>
+      <td>${fmt(tcl, 4)}</td>
+      <td>${fmt(rise, 4)}</td>
+      <td>${fmt(bw, 1)}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+// ---- Bode 图绘制 ----
+function drawBode(L_H, R, alpha) {
+  const canvas = document.getElementById('bodeCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // 绘图区域边距
+  const ml = 58, mr = 20, mt = 20, mb = 40;
+  const pw = W - ml - mr, ph = H - mt - mb;
+
+  // 背景
+  ctx.fillStyle = '#fafbfc';
+  ctx.fillRect(0, 0, W, H);
+
+  // 频率范围: 1 rad/s ~ 100000 rad/s (对数坐标)
+  const fMin = 1, fMax = 100000;
+  const logMin = Math.log10(fMin), logMax = Math.log10(fMax);
+
+  // 幅值范围: -60 dB ~ 40 dB
+  const dbMin = -60, dbMax = 40;
+
+  // 坐标转换
+  function freqToX(f) { return ml + (Math.log10(f) - logMin) / (logMax - logMin) * pw; }
+  function dbToY(db) { return mt + (dbMax - db) / (dbMax - dbMin) * ph; }
+
+  // 网格线
+  ctx.strokeStyle = '#e0e4e8';
+  ctx.lineWidth = 0.5;
+  // 水平网格 (每20dB)
+  for (let db = dbMin; db <= dbMax; db += 20) {
+    const y = dbToY(db);
+    ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml + pw, y); ctx.stroke();
+  }
+  // 垂直网格 (每decade)
+  for (let p = logMin; p <= logMax; p += 1) {
+    const x = freqToX(Math.pow(10, p));
+    ctx.beginPath(); ctx.moveTo(x, mt); ctx.lineTo(x, mt + ph); ctx.stroke();
+  }
+
+  // 坐标轴标注
+  ctx.fillStyle = '#7f8c8d';
+  ctx.font = '11px Consolas, monospace';
+  ctx.textAlign = 'right';
+  for (let db = dbMin; db <= dbMax; db += 20) {
+    ctx.fillText(db + ' dB', ml - 4, dbToY(db) + 4);
+  }
+  ctx.textAlign = 'center';
+  for (let p = logMin; p <= logMax; p += 1) {
+    const v = Math.pow(10, p);
+    let label;
+    if (v >= 1000) label = (v / 1000) + 'k';
+    else label = v.toString();
+    ctx.fillText(label, freqToX(v), mt + ph + 16);
+  }
+  ctx.fillText('频率 (rad/s)', ml + pw / 2, H - 4);
+
+  // ---- 绘制开环传递函数 Bode 幅频 ----
+  // 开环: G_ol(s) = Kp * (s + Ki/Kp) / (s * (s*L + R))
+  //       = alpha*L * (s + alpha) / (s * (s*L + R))
+  // 代入 tau = L/R:
+  //       = alpha*R*tau * (s + alpha) / (s * (tau*s + 1))
+  // 幅值: |G_ol(jw)| = alpha*R*tau * sqrt(w^2 + alpha^2) / (w * sqrt(tau^2*w^2 + 1))
+  // dB = 20*log10(|G_ol(jw)|)
+
+  const tau = L_H / R;
+
+  // 被控对象 (无PI): 1/(sL + R) 的Bode
+  ctx.beginPath();
+  ctx.strokeStyle = '#bdc3c7';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 4]);
+  for (let px = 0; px <= pw; px++) {
+    const logF = logMin + (px / pw) * (logMax - logMin);
+    const w = Math.pow(10, logF);
+    // |1/(jwL + R)| = 1/sqrt(w^2*L^2 + R^2)
+    const mag = 1.0 / Math.sqrt(w * w * L_H * L_H + R * R);
+    const db = 20 * Math.log10(mag);
+    const y = dbToY(db);
+    if (px === 0) ctx.moveTo(ml + px, Math.max(mt, Math.min(mt + ph, y)));
+    else ctx.lineTo(ml + px, Math.max(mt, Math.min(mt + ph, y)));
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 开环 (含PI)
+  ctx.beginPath();
+  ctx.strokeStyle = '#1b3a5c';
+  ctx.lineWidth = 2.2;
+  for (let px = 0; px <= pw; px++) {
+    const logF = logMin + (px / pw) * (logMax - logMin);
+    const w = Math.pow(10, logF);
+    const num = alpha * R * tau * Math.sqrt(w * w + alpha * alpha);
+    const den = w * Math.sqrt(tau * tau * w * w + 1);
+    const mag = num / den;
+    const db = 20 * Math.log10(Math.max(mag, 1e-15));
+    const y = dbToY(db);
+    if (px === 0) ctx.moveTo(ml + px, Math.max(mt, Math.min(mt + ph, y)));
+    else ctx.lineTo(ml + px, Math.max(mt, Math.min(mt + ph, y)));
+  }
+  ctx.stroke();
+
+  // 0 dB 参考线
+  ctx.strokeStyle = '#e74c3c';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  const y0 = dbToY(0);
+  ctx.beginPath(); ctx.moveTo(ml, y0); ctx.lineTo(ml + pw, y0); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#e74c3c';
+  ctx.font = '10px Consolas, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('0 dB', ml + pw + 2, y0 + 3);
+
+  // 标注穿越频率 α
+  const xAlpha = freqToX(alpha);
+  if (xAlpha > ml && xAlpha < ml + pw) {
+    ctx.strokeStyle = '#27ae60';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(xAlpha, mt); ctx.lineTo(xAlpha, mt + ph); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#27ae60';
+    ctx.font = '10px Microsoft YaHei, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('α=' + alpha, xAlpha, mt + ph + 28);
+  }
+
+  // 标注极点 1/tau
+  const poleFreq = 1 / tau;
+  const xPole = freqToX(poleFreq);
+  if (xPole > ml && xPole < ml + pw) {
+    ctx.strokeStyle = '#8e44ad';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(xPole, mt); ctx.lineTo(xPole, mt + ph); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#8e44ad';
+    ctx.font = '10px Microsoft YaHei, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('1/τ', xPole, mt + 12);
+  }
+
+  // 图例
+  ctx.font = '11px Microsoft YaHei, sans-serif';
+  ctx.textAlign = 'left';
+  const lx = ml + 10, ly = mt + 14;
+  ctx.fillStyle = '#1b3a5c';
+  ctx.fillRect(lx, ly - 4, 18, 3);
+  ctx.fillText('开环 (含PI)', lx + 24, ly);
+  ctx.fillStyle = '#bdc3c7';
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(lx, ly + 14); ctx.lineTo(lx + 18, ly + 14); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#95a5a6';
+  ctx.fillText('被控对象 (无PI)', lx + 24, ly + 18);
+}
+
+// ---- 阶跃响应绘制 ----
+function drawStep(alpha) {
+  const canvas = document.getElementById('stepCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const ml = 58, mr = 20, mt = 20, mb = 44;
+  const pw = W - ml - mr, ph = H - mt - mb;
+
+  ctx.fillStyle = '#fafbfc';
+  ctx.fillRect(0, 0, W, H);
+
+  // 时间范围: 0 ~ 5/alpha (5倍闭环时间常数)
+  const tMax = 5 / alpha;
+  const tauCl = 1 / alpha;
+
+  // 值范围: 0 ~ 1.15
+  const yMin = 0, yMax = 1.15;
+
+  function tToX(t) { return ml + (t / tMax) * pw; }
+  function vToY(v) { return mt + (yMax - v) / (yMax - yMin) * ph; }
+
+  // 网格
+  ctx.strokeStyle = '#e0e4e8';
+  ctx.lineWidth = 0.5;
+  // 水平
+  for (let v = 0; v <= 1; v += 0.2) {
+    const y = vToY(v);
+    ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml + pw, y); ctx.stroke();
+  }
+  // 垂直 (每 tau_cl)
+  const nTau = Math.floor(tMax / tauCl);
+  for (let i = 1; i <= nTau; i++) {
+    const x = tToX(i * tauCl);
+    ctx.beginPath(); ctx.moveTo(x, mt); ctx.lineTo(x, mt + ph); ctx.stroke();
+  }
+
+  // 坐标轴标注
+  ctx.fillStyle = '#7f8c8d';
+  ctx.font = '11px Consolas, monospace';
+  ctx.textAlign = 'right';
+  for (let v = 0; v <= 1; v += 0.2) {
+    ctx.fillText(v.toFixed(1), ml - 4, vToY(v) + 4);
+  }
+  ctx.textAlign = 'center';
+  for (let i = 0; i <= nTau; i++) {
+    const t = i * tauCl;
+    ctx.fillText(fmt(t * 1e3, 2) + 'ms', tToX(t), mt + ph + 16);
+  }
+  ctx.fillText('时间', ml + pw / 2, H - 4);
+
+  // 1.0 参考线
+  ctx.strokeStyle = '#e74c3c';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 3]);
+  const y1 = vToY(1.0);
+  ctx.beginPath(); ctx.moveTo(ml, y1); ctx.lineTo(ml + pw, y1); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#e74c3c';
+  ctx.font = '10px Consolas, monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('1.0', ml + pw + 2, y1 + 3);
+
+  // 10% 和 90% 线
+  ctx.strokeStyle = '#f39c12';
+  ctx.lineWidth = 0.8;
+  ctx.setLineDash([2, 3]);
+  const y10 = vToY(0.1), y90 = vToY(0.9);
+  ctx.beginPath(); ctx.moveTo(ml, y10); ctx.lineTo(ml + pw, y10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ml, y90); ctx.lineTo(ml + pw, y90); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#f39c12';
+  ctx.font = '9px Consolas, monospace';
+  ctx.fillText('90%', ml + pw + 2, y90 + 3);
+  ctx.fillText('10%', ml + pw + 2, y10 + 3);
+
+  // 阶跃响应曲线: y(t) = 1 - exp(-alpha * t)
+  ctx.beginPath();
+  ctx.strokeStyle = '#1b3a5c';
+  ctx.lineWidth = 2.5;
+  const steps = 400;
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * tMax;
+    const v = 1 - Math.exp(-alpha * t);
+    const x = tToX(t), y = vToY(v);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // 标注上升时间
+  const t10 = -Math.log(0.9) / alpha;  // 1-0.9=0.1 -> t10
+  const t90 = -Math.log(0.1) / alpha;  // 1-0.1=0.9 -> t90
+  const riseTime = t90 - t10;
+  const x10 = tToX(t10), x90 = tToX(t90);
+
+  // 上升时间双箭头
+  ctx.strokeStyle = '#27ae60';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([]);
+  // 竖线
+  ctx.beginPath(); ctx.moveTo(x10, y10); ctx.lineTo(x10, y10 + 14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x90, y90); ctx.lineTo(x90, y90 + 14); ctx.stroke();
+  // 横线
+  const arrowY = Math.max(y10, y90) + 12;
+  ctx.beginPath(); ctx.moveTo(x10, arrowY); ctx.lineTo(x90, arrowY); ctx.stroke();
+  // 箭头
+  ctx.beginPath(); ctx.moveTo(x10, arrowY - 3); ctx.lineTo(x10, arrowY + 3); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x90, arrowY - 3); ctx.lineTo(x90, arrowY + 3); ctx.stroke();
+  // 标注文字
+  ctx.fillStyle = '#27ae60';
+  ctx.font = '10px Microsoft YaHei, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('上升时间 ' + fmt(riseTime * 1e3, 3) + 'ms', (x10 + x90) / 2, arrowY + 14);
+
+  // 图例
+  ctx.font = '11px Microsoft YaHei, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#1b3a5c';
+  ctx.fillRect(ml + 10, mt + 10, 18, 3);
+  ctx.fillText('闭环阶跃响应  y(t) = 1 - e^(-αt)', ml + 34, mt + 15);
+}
+
+// ---- 导出参数 ----
+function exportParams() {
+  const L_H   = parseFloat(elL.value) * 1e-3;
+  const R     = parseFloat(elR.value);
+  const fPWM  = parseFloat(elFPWM.value);
+  const alpha = parseFloat(elSlider.value);
+
+  if (!L_H || !R || !fPWM || !alpha) { showToast('参数不完整，无法导出'); return; }
+
+  const tau      = L_H / R;
+  const Kp       = alpha * L_H;
+  const Ki       = alpha * R;
+  const tau_cl   = 1 / alpha;
+  const riseTime = 1.8 / alpha;
+  const bw       = alpha / (2 * Math.PI);
+  const alphaMax = 2 * Math.PI * fPWM * 1e3 / 20;
+  const accel    = tau / tau_cl;
+
+  const text = [
+    '===== 电流环 PI 参数整定结果 =====',
+    '',
+    '【输入参数】',
+    '  电感 L       = ' + elL.value + ' mH (' + fmt(L_H, 6) + ' H)',
+    '  电阻 R       = ' + elR.value + ' Ω',
+    '  PWM频率 fPWM = ' + elFPWM.value + ' kHz',
+    '  期望带宽 α   = ' + alpha + ' rad/s',
+    '',
+    '【计算结果】',
+    '  电气时间常数 τ     = ' + fmt(tau * 1e3, 4) + ' ms',
+    '  比例增益 Kp        = ' + fmt(Kp, 6) + ' V/A',
+    '  积分增益 Ki        = ' + fmt(Ki, 4) + ' V/(A·s)',
+    '  闭环时间常数 τ_cl  = ' + fmt(tau_cl * 1e3, 4) + ' ms',
+    '  加速比 τ/τ_cl      = ' + fmt(accel, 2),
+    '  上升时间 (10%~90%) = ' + fmt(riseTime * 1e3, 4) + ' ms',
+    '  闭环带宽           = ' + fmt(bw, 1) + ' Hz',
+    '  α推荐上限 α_max    = ' + fmt(alphaMax, 1) + ' rad/s',
+    '',
+    '【安全性评估】',
+    '  α/α_max = ' + fmt(alpha / alphaMax * 100, 1) + '%',
+    alpha / alphaMax <= 0.7 ? '  评估：安全' : (alpha / alphaMax <= 1.0 ? '  评估：注意' : '  评估：危险'),
+    '',
+    '【公式】',
+    '  τ = L/R',
+    '  Kp = α × L',
+    '  Ki = α × R',
+    '  τ_cl = 1/α',
+    '  上升时间 ≈ 1.8/α',
+    '  α_max = 2π × fPWM / 20',
+  ].join('\n');
+
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('参数已复制到剪贴板');
+  }).catch(() => {
+    // 降级方案
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('参数已复制到剪贴板');
+  });
+}
+
+// ---- 电机参数库（真实参数） ----
+const MOTOR_DB = {
+  std_200w_ipmsm: {
+    name: "200W IPMSM 内置式永磁同步电机",
+    type: "IPMSM",
+    L_mH: 0.08, R_Ohm: 0.06, fPWM_kHz: 20,
+    Ld_mH: 0.08, Lq_mH: 0.16,
+    Vdc_V: 24, P_W: 200, T_Nm: 0.64,
+    n_rated_rpm: 3000, n_max_rpm: 3200,
+    I_rated_A: 11.5, I_peak_A: 23,
+    Ke_V_krpm: 3.4, Kt_NmA: 0.06,
+    J_kgm2: 3.2e-6, pole_pairs: 5,
+    tau_ms: 1.333,
+    info: "<strong>类型:</strong> IPMSM (Ld≠Lq，凸极比2:1) &nbsp;|&nbsp; <strong>额定:</strong> 24V/200W/3000rpm/11.5A &nbsp;|&nbsp; <strong>峰值:</strong> 23A/0.64Nm &nbsp;|&nbsp; <strong>Ld=0.08mH, Lq=0.16mH</strong>, Rs=0.06Ω &nbsp;|&nbsp; τ=1.33ms &nbsp;|&nbsp; 推荐α: 4000~8000 rad/s"
+  },
+  ref_small_motor: {
+    name: "小型高速PMSM（飞书原文参考）",
+    type: "SPMSM",
+    L_mH: 0.10376, R_Ohm: 0.1051, fPWM_kHz: 20,
+    Ld_mH: 0.10376, Lq_mH: 0.10376,
+    Vdc_V: 24, P_W: ~50,
+    n_rated_rpm: ~5000,
+    I_rated_A: ~5,
+    Ke_V_krpm: ~1.52,
+    pole_pairs: 7,
+    tau_ms: 0.987,
+    info: "<strong>类型:</strong> SPMSM (表贴式，Ld=Lq) &nbsp;|&nbsp; <strong>参考来源:</strong> 飞书原文示例电机 &nbsp;|&nbsp; <strong>L=0.104mH, R=0.105&Omega;</strong> &nbsp;|&nbsp; &tau;=0.99ms &nbsp;|&nbsp; 推荐&alpha;: 3000~6000 rad/s"
+  },
+  gimbal_4310: {
+    name: "4310 云台电机（外转子，磁环编码器）",
+    type: "BLDC_Gimbal",
+    L_mH: 4.74, R_Ohm: 10.90, fPWM_kHz: 20,
+    Ld_mH: 4.74, Lq_mH: 4.74,
+    Vdc_V: 16, P_W: ~11, T_Nm: 0.21,
+    n_rated_rpm: 512, n_max_rpm: 846,
+    I_rated_A: 0.79, I_stall_A: 1.20,
+    Ke_V_krpm: 33, Kt_NmA: 0.27,
+    J_kgm2: 2.02e-5, pole_pairs: 14,
+    tau_ms: 0.435,
+    info: "<strong>类型:</strong> 外转子无刷(28极) 直驱云台 &nbsp;|&nbsp; <strong>额定:</strong> 16V/~11W/512rpm/0.79A &nbsp;|&nbsp; <strong>L=4.74mH</strong>, <strong style='color:#c00'>R=10.9&Omega;</strong>(极大!) &nbsp;|&nbsp; &tau;=0.44ms &nbsp;|&nbsp; Kp(@3k)=<strong style='color:red'>14.2V/A</strong>(IPMSM的35倍!) &nbsp;|&nbsp; 推荐&alpha;: 2000~4000"
+  }
+};
+
+// ---- 电机选择处理 ----
+const elMotorSelect = document.getElementById('motorSelect');
+const elMotorInfo = document.getElementById('motorInfo');
+
+elMotorSelect.addEventListener('change', function() {
+  const key = this.value;
+  if (key && MOTOR_DB[key]) {
+    const m = MOTOR_DB[key];
+    elL.value = String(m.L_mH);
+    elR.value = String(m.R_Ohm);
+    elFPWM.value = String(m.fPWM_kHz);
+
+    elSlider.value = m.type === 'IPMSM' ? '5000' : m.type === 'BLDC_Gimbal' ? '3000' : '3000';
+
+    elMotorInfo.innerHTML = m.info;
+    elMotorInfo.classList.add('visible');
+
+    calc();
+    showToast(`已加载：${m.name}`);
+  } else {
+    elMotorInfo.classList.remove('visible');
+  }
+});
+
+// ---- 恢复默认 ----
+function resetDefaults() {
+  elL.value    = '0.08';
+  elR.value    = '0.06';
+  elFPWM.value = '20';
+  elSlider.value = '5000';
+  elMotorSelect.value = '';
+  elMotorInfo.classList.remove('visible');
+  calc();
+  showToast('已恢复默认参数（标准教学电机）');
+}
+
+// ---- 事件绑定 ----
+elL.addEventListener('input', calc);
+elR.addEventListener('input', calc);
+elFPWM.addEventListener('input', calc);
+elSlider.addEventListener('input', calc);
+
+// ---- 初始计算 ----
+calc();
+</script>
+
+</body>
+</html>

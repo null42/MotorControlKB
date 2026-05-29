@@ -116,23 +116,24 @@
 
 | 站号 | 模块 | 核心内容 | 难度 | 预计学习时间 |
 |------|------|---------|------|------------|
+| 第0站 | [ALG-00 电流环物理直觉](./algorithm/ALG-00-Current-Loop-Intuition.md) | 时间常数τ、带宽α、零极点对消、PI参数的物理直觉与整定实践 | ★☆☆☆☆ | 2-3小时 |
 | 第1站 | [ALG-1 FOC理论基础](./algorithm/ALG-01-FOC-Theory.md) | Clarke/Park变换、磁场定向、转矩产生、dq解耦 | ★★☆☆☆ | 4-5小时 |
-| 第2站 | [ALG-2 有感FOC实现](./algorithm/ALG-05-Sensored-FOC.md) | 编码器接口、电流环/速度环PI、SVPWM、启动策略 | ★★★☆☆ | 5-6小时 |
-| 第3站 | [ALG-3 无感FOC观测器](./algorithm/ALG-07-Sensorless-Observers.md) | 反EMF/SMO/磁链/EKF/MRAS观测器 | ★★★★☆ | 6-8小时 |
-| 第4站 | [ALG-4 高频注入法](./algorithm/ALG-09-High-Frequency-Injection.md) | 凸极效应、脉振/方波注入、N/S极判断、全速域切换 | ★★★★☆ | 5-6小时 |
-| 第5站 | [ALG-5 保护与优化](./algorithm/ALG-13-Protection-Optimization.md) | 保护算法、死区补偿、弱磁/MTPA、参数自整定 | ★★★★☆ | 5-6小时 |
-| 第6站 | [ALG-6 前沿研究](./algorithm/ALG-15-Advanced-Research.md) | 离散时间非线性磁链观测器、低载波比控制 | ★★★★★ | 6-8小时 |
-| 第7站 | [ALG-7 电流采样时序](./algorithm/ALG-02-Current-Sampling-Timing.md) | ADC采样时刻、PWM同步策略、电流重构 | ★★★★☆ | 4-5小时 |
-| 第8站 | [ALG-8 过调制技术](./algorithm/ALG-10-Overmodulation.md) | 过调制策略、电压利用率提升、谐波分析 | ★★★★☆ | 4-5小时 |
-| 第9站 | [ALG-9 PI电流调节器](./algorithm/ALG-03-PI-Current-Regulator.md) | 电流环带宽设计、dq耦合解耦、抗积分饱和 | ★★★☆☆ | 4-5小时 |
-| 第10站 | [ALG-10 位置速度观测器](./algorithm/ALG-06-Position-Speed-Observer.md) | 角度跟踪观测器、速度估计、低通滤波设计 | ★★★★☆ | 5-6小时 |
+| 第2站 | [ALG-3 PI电流调节器](./algorithm/ALG-03-PI-Current-Regulator.md) | 电流环带宽设计、dq耦合解耦、抗积分饱和 | ★★★☆☆ | 4-5小时 |
+| 第3站 | [ALG-2 有感FOC实现](./algorithm/ALG-05-Sensored-FOC.md) | 编码器接口、电流环/速度环PI、SVPWM、启动策略 | ★★★☆☆ | 5-6小时 |
+| 第4站 | [ALG-7 无感FOC观测器](./algorithm/ALG-07-Sensorless-Observers.md) | 反EMF/SMO/磁链/EKF/MRAS观测器 | ★★★★☆ | 6-8小时 |
+| 第5站 | [ALG-9 高频注入法](./algorithm/ALG-09-High-Frequency-Injection.md) | 凸极效应、脉振/方波注入、N/S极判断、全速域切换 | ★★★★☆ | 5-6小时 |
+| 第6站 | [ALG-13 保护与优化](./algorithm/ALG-13-Protection-Optimization.md) | 保护算法、死区补偿、弱磁/MTPA、参数自整定 | ★★★★☆ | 5-6小时 |
+| 第7站 | [ALG-15 前沿研究](./algorithm/ALG-15-Advanced-Research.md) | 离散时间非线性磁链观测器、低载波比控制 | ★★★★★ | 6-8小时 |
+| 第8站 | [ALG-7 电流采样时序](./algorithm/ALG-02-Current-Sampling-Timing.md) | ADC采样时刻、PWM同步策略、电流重构 | ★★★★☆ | 4-5小时 |
+| 第9站 | [ALG-10 过调制技术](./algorithm/ALG-10-Overmodulation.md) | 过调制策略、电压利用率提升、谐波分析 | ★★★★☆ | 4-5小时 |
+| 第10站 | [ALG-6 位置速度观测器](./algorithm/ALG-06-Position-Speed-Observer.md) | 角度跟踪观测器、速度估计、低通滤波设计 | ★★★★☆ | 5-6小时 |
 | 第11站 | [ALG-11 MTPA与弱磁控制](./algorithm/ALG-11-MTPA-Flux-Weakening.md) | 最大转矩电流比、弱磁场控制、电压约束 | ★★★★☆ | 5-6小时 |
-| 第12站 | [ALG-12 THD与谐波分析](./algorithm/ALG-14-THD-Harmonic-Analysis.md) | 总谐波失真、频谱分析、谐波抑制策略 | ★★★☆☆ | 3-4小时 |
+| 第12站 | [ALG-14 THD与谐波分析](./algorithm/ALG-14-THD-Harmonic-Analysis.md) | 总谐波失真、频谱分析、谐波抑制策略 | ★★★☆☆ | 3-4小时 |
 | 第13站 | [ALG-13 死区补偿](./algorithm/ALG-04-Deadtime-Compensation.md) | 死区效应分析、电压误差补偿、相电流极性检测 | ★★★★☆ | 4-5小时 |
 | 第14站 | [ALG-14 初始位置检测](./algorithm/ALG-08-Initial-Position-Detection.md) | 转子初始位置、脉冲注入法、电感饱和检测 | ★★★★★ | 4-5小时 |
 | 第15站 | [ALG-15 速度环与转矩观测器](./algorithm/ALG-12-Speed-Loop-Torque-Observer.md) | 速度环PI设计、负载转矩前馈、转动惯量辨识 | ★★★★☆ | 4-5小时 |
 
-**学习路径推荐**：ALG-1~ALG-6为原有基础路径，ALG-7~ALG-15为专项深化模块，可按需选学
+**学习路径推荐：** ALG-00为新增入门引导站（第0站），建议所有新手从这里开始 → ALG-1~ALG-6为原有基础路径，ALG-7~ALG-15为专项深化模块，可按需选学
 
 ### 🆕 学习路径5：hpm_MC 代码实践（工程视角）
 
@@ -182,6 +183,18 @@
 | 站号 | 模块 | 核心内容 | 难度 | 预计学习时间 |
 |------|------|---------|------|------------|
 | 对比 | [全面对比分析](./COMPARISON/COMP-01-ODrive-vs-VESC.md) | 架构/FOC/无感/保护/编码器/通信 11维度对比 + 选择建议 | ★★★★☆ | 3-4小时 |
+
+### 🆕 学习路径9：🧪 C 语言仿真验证
+
+> 电机控制算法的数值仿真实验平台，验证理论、观察现象、理解代码
+
+| 站号 | 模块 | 核心内容 | 难度 | 预计学习时间 |
+|------|------|---------|------|------------|
+| 入站 | [仿真入口总索引](./simulation/SIM-00-C-Simulation-Overview.md) | KB 模块→仿真模式对应表（FOC/速度环/无感/参数辨识/逆变器/扫频） | ★★☆☆☆ | 15分钟 |
+| 第1站 | [快速上手指南](./simulation/SIM-01-C-Simulation-QuickStart.md) | 环境准备、三种启动方式、Streamlit 操作流程、YAML 参数速查、绘图解读 | ★☆☆☆☆ | 30分钟 |
+| 第2站 | [代码概念映射](./simulation/SIM-02-C-Simulation-Code-Map.md) | C 仿真源码与 KB 理论的逐函数对照、代码定位指南、安全提示 | ★★★☆☆ | 1-2小时 |
+
+**学习路径推荐**：入站查阅验证目标 → 第1站跑通第一个仿真 → 第2站深入理解 C 代码实现
 
 ---
 
@@ -280,6 +293,10 @@ motor-control-knowledge-base/
 │   └── HW-07-Thermal-EMC-Design.md    # 热设计与EMC
 ├── algorithm/                         # 算法学习路径
 │   ├── README.md                      # 算法路径索引
+│   ├── ALG-00-Current-Loop-Intuition.md  # 🆕 电流环PI整定的物理直觉（入门引导）
+│   ├── ALG-00-assessment.md           # 🆕 ALG-00 配套检验题目
+│   ├── ALG-00-PI-Calculator.html      # 🆕 PI参数交互式计算器
+│   ├── ALG-00-Pole-Zero-Animation.html # 🆕 零极点对消动画演示
 │   ├── ALG-01-FOC-Theory.md           # FOC理论基础
 │   ├── ALG-05-Sensored-FOC.md         # 有感FOC实现
 │   ├── ALG-07-Sensorless-Observers.md # 无感FOC观测器

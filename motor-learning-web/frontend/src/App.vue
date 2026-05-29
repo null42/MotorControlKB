@@ -71,10 +71,12 @@ const toggleSidebar = () => {
 const selectDoc = (filePath: string) => {
   currentDoc.value = filePath
   markVisited(filePath)
+  history.pushState(null, '', '/' + filePath)
 }
 
 const navigateToDoc = (filePath: string) => {
   currentDoc.value = filePath
+  history.pushState(null, '', '/' + filePath)
 }
 
 const handleSelectSim = (simName: string) => {
@@ -117,6 +119,12 @@ onMounted(async () => {
     const res = await axios.get('/api/docs/list')
     knowledgeBase.value = res.data
   } catch (e) {}
+
+  const path = window.location.pathname
+  if (path && path !== '/' && path.endsWith('.md')) {
+    const docPath = path.replace(/^\//, '')
+    currentDoc.value = docPath
+  }
 })
 </script>
 

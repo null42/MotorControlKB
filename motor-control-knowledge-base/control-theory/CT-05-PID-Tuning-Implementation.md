@@ -361,3 +361,8 @@ FOC电流环，Vdc=48V, Imax=20A, Ls=1.5mH, Rs=0.25Ω
 - 知识体系：控制理论基础
 - 模块名称：PID 整定与工程实现
 - 算法关联：电流环完整调优流程、anti-windup（back-calculation）、bumpless transfer
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_VELOCITY_LOOP (4)，关键操作：改 FOC.delta（速度/电流带宽比 5~25），观察 Speed 子图响应速度变化

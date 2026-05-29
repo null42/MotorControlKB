@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>零极点对消动画演示 - 电流环PI整定</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+.header{background:linear-gradient(135deg,#0d1b2a,#1b2838);padding:20px 30px;border-bottom:2px solid #00d4ff}
+.header h1{font-size:22px;color:#00d4ff;margin-bottom:4px}
+.header p{font-size:13px;color:#8899aa}
+.controls{display:flex;flex-wrap:wrap;gap:16px;padding:16px 24px;background:#16213e;border-bottom:1px solid #2a3a5c;align-items:flex-end}
+.ctrl-group{display:flex;flex-direction:column;gap:4px}
+.ctrl-group label{font-size:12px;color:#8899aa}
+.ctrl-group input[type=range]{width:160px;accent-color:#00d4ff}
+.ctrl-group .val{font-size:14px;color:#00d4ff;font-weight:bold;min-width:80px}
+.btn{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;transition:all .2s}
+.btn-start{background:#00d4ff;color:#0d1b2a}.btn-start:hover{background:#33ddff}
+.btn-reset{background:#555;color:#fff}.btn-reset:hover{background:#777}
+.btn-group{display:flex;gap:8px;align-items:flex-end}
+.panels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:16px 24px}
+.panel{background:#0f1a2e;border:1px solid #2a3a5c;border-radius:8px;overflow:hidden}
+.panel-title{background:#16213e;padding:8px 12px;font-size:13px;color:#00d4ff;border-bottom:1px solid #2a3a5c;text-align:center}
+.panel canvas{display:block;width:100%;background:#0a0f1a}
+.info-bar{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 24px}
+.info-card{background:#16213e;border:1px solid #2a3a5c;border-radius:8px;padding:12px 16px}
+.info-card h3{font-size:13px;color:#00d4ff;margin-bottom:8px}
+.info-card .formula{font-family:'Courier New',monospace;font-size:13px;color:#e0e0e0;line-height:1.8}
+.info-card .highlight{color:#00ff88;font-weight:bold}
+.info-card .warn{color:#ff6644}
+.status-bar{padding:10px 24px;background:#0d1b2a;text-align:center;font-size:14px;border-top:1px solid #2a3a5c}
+.status-bar .cancel-yes{color:#00ff88;font-size:18px;font-weight:bold}
+.status-bar .cancel-no{color:#ff6644}
+.legend{display:flex;gap:20px;padding:8px 24px;background:#0d1b2e;font-size:12px;color:#8899aa;justify-content:center;border-top:1px solid #2a3a5c}
+.legend span{display:flex;align-items:center;gap:4px}
+.legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dot-pole{background:#ff4444}
+.dot-zero{background:#4488ff}
+.dot-cancel{background:#00ff88}
+@media(max-width:900px){.panels{grid-template-columns:1fr}.info-bar{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>⚡ 零极点对消动画演示</h1>
+<p>电流环PI整定 — 观察PI控制器零点如何"消灭"电机极点，将二阶系统简化为一阶</p>
+</div>
+<div class="controls">
+<div class="ctrl-group">
+<label>相电感 L (mH)</label>
+<input type="range" id="sliderL" min="0.05" max="50" step="0.01" value="0.08">
+<span class="val" id="valL">0.08 mH</span>
+</div>
+<div class="ctrl-group">
+<label>相电阻 R (Ω)</label>
+<input type="range" id="sliderR" min="0.01" max="2" step="0.01" value="0.06">
+<span class="val" id="valR">0.06 Ω</span>
+</div>
+<div class="ctrl-group">
+<label>带宽 α (rad/s)</label>
+<input type="range" id="sliderAlpha" min="500" max="10000" step="100" value="5000">
+<span class="val" id="valAlpha">3000 rad/s</span>
+</div>
+<div class="ctrl-group">
+<label>动画进度</label>
+<input type="range" id="sliderProgress" min="0" max="100" step="1" value="0">
+<span class="val" id="valProgress">0%</span>
+</div>
+<div class="btn-group">
+<button class="btn btn-start" id="btnAnimate">▶ 开始对消</button>
+<button class="btn btn-reset" id="btnReset">↺ 重置</button>
+</div>
+</div>
+<div class="legend">
+<span><span class="dot dot-pole"></span> 极点 (×)</span>
+<span><span class="dot dot-zero"></span> 零点 (○)</span>
+<span><span class="dot dot-cancel"></span> 对消 (✓)</span>
+</div>
+<div class="panels">
+<div class="panel">
+<div class="panel-title">📍 s平面（零极点位置）</div>
+<canvas id="canvasSPlane" width="400" height="360"></canvas>
+</div>
+<div class="panel">
+<div class="panel-title">📊 Bode图（开环频率响应）</div>
+<canvas id="canvasBode" width="400" height="360"></canvas>
+</div>
+<div class="panel">
+<div class="panel-title">📈 阶跃响应（闭环时域）</div>
+<canvas id="canvasStep" width="400" height="360"></canvas>
+</div>
+</div>
+<div class="info-bar">
+<div class="info-card">
+<h3>传递函数（当前状态）</h3>
+<div class="formula" id="tfDisplay">
+电机: G(s) = 1 / (Ls + R)<br>
+PI: C(s) = Kp(s + Ki/Kp) / s<br>
+开环: L(s) = C(s)·G(s)<br>
+闭环: G_cl(s) = L(s) / (1 + L(s))
+</div>
+</div>
+<div class="info-card">
+<h3>对消条件与参数</h3>
+<div class="formula" id="paramDisplay">
+PI零点: s = <span class="warn" id="zeroPos">-Ki/Kp</span><br>
+电机极点: s = <span class="highlight" id="polePos">-R/L</span><br>
+对消条件: Ki/Kp = R/L<br>
+Kp = <span id="kpVal">0.311</span> V/A &nbsp; Ki = <span id="kiVal">315.3</span> V/(A·s)
+</div>
+</div>
+</div>
+<div class="status-bar" id="statusBar">
+当前状态：<span class="cancel-no">零点与极点未对消</span> — 系统为二阶，可能存在超调/振荡
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const sPlaneCanvas = $('canvasSPlane');
+const bodeCanvas = $('canvasBode');
+const stepCanvas = $('canvasStep');
+const sCtx = sPlaneCanvas.getContext('2d');
+const bCtx = bodeCanvas.getContext('2d');
+const stCtx = stepCanvas.getContext('2d');
+
+let L = 0.08e-3;
+let R = 0.06;
+let alpha = 5000;
+let progress = 0;
+let animating = false;
+let animId = null;
+
+function getParams() {
+    const tau = L / R;
+    const Kp = alpha * L;
+    const Ki = alpha * R;
+    const zeroPos = Ki / Kp;
+    const polePos = R / L;
+    return { tau, Kp, Ki, zeroPos, polePos };
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+
+$('sliderL').oninput = function() {
+    L = parseFloat(this.value) * 1e-3;
+    $('valL').textContent = (L*1e3).toFixed(3) + ' mH';
+    drawAll();
+};
+$('sliderR').oninput = function() {
+    R = parseFloat(this.value);
+    $('valR').textContent = R.toFixed(4) + ' Ω';
+    drawAll();
+};
+$('sliderAlpha').oninput = function() {
+    alpha = parseFloat(this.value);
+    $('valAlpha').textContent = alpha + ' rad/s';
+    drawAll();
+};
+$('sliderProgress').oninput = function() {
+    progress = parseFloat(this.value);
+    $('valProgress').textContent = progress + '%';
+    drawAll();
+};
+
+$('btnAnimate').onclick = function() {
+    if (animating) { stopAnim(); return; }
+    animating = true;
+    this.textContent = '⏸ 暂停';
+    progress = 0;
+    $('sliderProgress').value = 0;
+    function step() {
+        progress += 0.5;
+        if (progress > 100) { progress = 100; stopAnim(); }
+        $('sliderProgress').value = progress;
+        $('valProgress').textContent = Math.round(progress) + '%';
+        drawAll();
+        if (animating && progress < 100) animId = requestAnimationFrame(step);
+    }
+    animId = requestAnimationFrame(step);
+};
+$('btnReset').onclick = function() {
+    stopAnim();
+    progress = 0;
+    $('sliderProgress').value = 0;
+    $('valProgress').textContent = '0%';
+    drawAll();
+};
+
+function stopAnim() {
+    animating = false;
+    $('btnAnimate').textContent = '▶ 开始对消';
+    if (animId) cancelAnimationFrame(animId);
+}
+
+function drawAll() {
+    const p = getParams();
+    const t = easeInOut(progress / 100);
+    updateInfo(p, t);
+    drawSPlane(p, t);
+    drawBode(p, t);
+    drawStep(p, t);
+}
+
+function updateInfo(p, t) {
+    const currentZeroRatio = lerp(2.0, 1.0, t);
+    const currentKiKp = p.polePos * currentZeroRatio;
+    const currentKp = alpha * L;
+    const currentKi = currentKp * currentKiKp;
+
+    $('zeroPos').textContent = '-' + currentKiKp.toFixed(2);
+    $('polePos').textContent = '-' + p.polePos.toFixed(2);
+    $('kpVal').textContent = currentKp.toFixed(4);
+    $('kiVal').textContent = currentKi.toFixed(2);
+
+    if (t > 0.95) {
+        $('statusBar').innerHTML = '当前状态：<span class="cancel-yes">✓ 零极点已对消！</span> — 系统简化为纯积分器 → 闭环一阶，相位裕度90°，理论永远稳定';
+    } else {
+        const pct = (t * 100).toFixed(0);
+        $('statusBar').innerHTML = '当前状态：<span class="cancel-no">对消进度 ' + pct + '%</span> — 零点正在向极点移动，Ki/Kp = ' + currentKiKp.toFixed(2) + '，目标 R/L = ' + p.polePos.toFixed(2);
+    }
+}
+
+function drawSPlane(p, t) {
+    const W = sPlaneCanvas.width, H = sPlaneCanvas.height;
+    const ctx = sCtx;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0a0f1a';
+    ctx.fillRect(0, 0, W, H);
+
+    const cx = W / 2, cy = H / 2;
+    const scale = W / 6;
+
+    ctx.strokeStyle = '#1a2a4a';
+    ctx.lineWidth = 1;
+    for (let i = -3; i <= 3; i++) {
+        ctx.beginPath(); ctx.moveTo(cx + i * scale, 0); ctx.lineTo(cx + i * scale, H); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, cy + i * scale); ctx.lineTo(W, cy + i * scale); ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#3a5a8a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+
+    ctx.fillStyle = '#5577aa';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Re', W - 25, cy - 8);
+    ctx.fillText('Im', cx + 8, 15);
+    ctx.fillText('jω', cx + 8, 30);
+
+    const poleX = cx + (-p.polePos) * scale;
+    const currentZeroRatio = lerp(2.0, 1.0, t);
+    const zeroX = cx + (-p.polePos * currentZeroRatio) * scale;
+
+    ctx.strokeStyle = '#ff4444';
+    ctx.lineWidth = 2;
+    drawX(ctx, poleX, cy, 8);
+    ctx.fillStyle = '#ff6666';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('极点 s=-R/L', poleX - 30, cy + 25);
+
+    ctx.strokeStyle = '#4488ff';
+    ctx.lineWidth = 2;
+    drawO(ctx, zeroX, cy, 8);
+    ctx.fillStyle = '#6699ff';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('零点 s=-Ki/Kp', zeroX - 35, cy - 18);
+
+    if (t > 0.95) {
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('✓ 对消!', (poleX + zeroX) / 2 - 20, cy - 35);
+    }
+
+    ctx.fillStyle = '#5577aa';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('0', cx + 4, cy + 14);
+}
+
+function drawX(ctx, x, y, s) {
+    ctx.beginPath(); ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s); ctx.stroke();
+}
+
+function drawO(ctx, x, y, r) {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+}
+
+function drawBode(p, t) {
+    const W = bodeCanvas.width, H = bodeCanvas.height;
+    const ctx = bCtx;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0a0f1a';
+    ctx.fillRect(0, 0, W, H);
+
+    const magH = H * 0.55;
+    const phaseH = H * 0.35;
+    const gap = H * 0.1;
+    const left = 50, right = W - 20;
+    const plotW = right - left;
+
+    const omegaMin = 10, omegaMax = 100000;
+    const logMin = Math.log10(omegaMin), logMax = Math.log10(omegaMax);
+
+    ctx.strokeStyle = '#1a2a4a';
+    ctx.lineWidth = 1;
+    for (let db = -60; db <= 40; db += 20) {
+        const y = magH * 0.1 + magH * 0.8 * (1 - (db + 60) / 100);
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+        ctx.fillStyle = '#5577aa'; ctx.font = '9px sans-serif';
+        ctx.fillText(db + 'dB', 5, y + 3);
+    }
+    for (let deg = 0; deg >= -180; deg -= 45) {
+        const y = magH + gap + phaseH * 0.1 + phaseH * 0.8 * (-deg / 180);
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+        ctx.fillStyle = '#5577aa'; ctx.font = '9px sans-serif';
+        ctx.fillText(deg + '°', 10, y + 3);
+    }
+
+    ctx.fillStyle = '#5577aa'; ctx.font = '10px sans-serif';
+    ctx.fillText('|L(jω)| dB', 2, 15);
+    ctx.fillText('∠L(jω)', 2, magH + gap + 10);
+
+    const currentZeroRatio = lerp(2.0, 1.0, t);
+    const Kp = alpha * L;
+    const KiKp = (R / L) * currentZeroRatio;
+    const zeroFreq = KiKp;
+    const poleFreq = R / L;
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2;
+    let first = true;
+    for (let i = 0; i <= 200; i++) {
+        const logW = logMin + (logMax - logMin) * i / 200;
+        const w = Math.pow(10, logW);
+        const numMag = Math.sqrt(w * w + zeroFreq * zeroFreq);
+        const denMag = w * Math.sqrt(w * w + poleFreq * poleFreq);
+        const mag = Kp / L * numMag / denMag;
+        const db = 20 * Math.log10(Math.max(mag, 1e-10));
+        const x = left + (logW - logMin) / (logMax - logMin) * plotW;
+        const y = magH * 0.1 + magH * 0.8 * (1 - (db + 60) / 100);
+        const yc = Math.max(magH * 0.05, Math.min(magH * 0.95, y));
+        if (first) { ctx.moveTo(x, yc); first = false; } else ctx.lineTo(x, yc);
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#ff8844';
+    ctx.lineWidth = 1.5;
+    first = true;
+    for (let i = 0; i <= 200; i++) {
+        const logW = logMin + (logMax - logMin) * i / 200;
+        const w = Math.pow(10, logW);
+        const numPhase = Math.atan2(w, zeroFreq) * 180 / Math.PI;
+        const denPhase = -90 - Math.atan2(w, poleFreq) * 180 / Math.PI;
+        const phase = numPhase + denPhase;
+        const x = left + (logW - logMin) / (logMax - logMin) * plotW;
+        const y = magH + gap + phaseH * 0.1 + phaseH * 0.8 * (-phase / 180);
+        const yc = Math.max(magH + gap, Math.min(H - 5, y));
+        if (first) { ctx.moveTo(x, yc); first = false; } else ctx.lineTo(x, yc);
+    }
+    ctx.stroke();
+
+    const zeroDbY = magH * 0.1 + magH * 0.8 * (1 - (0 + 60) / 100);
+    ctx.strokeStyle = '#ff444488';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(left, zeroDbY); ctx.lineTo(right, zeroDbY); ctx.stroke();
+    ctx.setLineDash([]);
+
+    const alphaLogW = Math.log10(alpha);
+    if (alphaLogW >= logMin && alphaLogW <= logMax) {
+        const x = left + (alphaLogW - logMin) / (logMax - logMin) * plotW;
+        ctx.strokeStyle = '#00ff8888';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(x, magH * 0.05); ctx.lineTo(x, magH * 0.95); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#00ff88'; ctx.font = '9px sans-serif';
+        ctx.fillText('α=' + alpha, x - 15, magH * 0.05 + 10);
+    }
+
+    ctx.fillStyle = '#5577aa'; ctx.font = '9px sans-serif';
+    ctx.fillText('10', left, H - 2);
+    ctx.fillText('1k', left + plotW * 0.33, H - 2);
+    ctx.fillText('10k', left + plotW * 0.66, H - 2);
+    ctx.fillText('100k', right - 25, H - 2);
+}
+
+function drawStep(p, t) {
+    const W = stepCanvas.width, H = stepCanvas.height;
+    const ctx = stCtx;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#0a0f1a';
+    ctx.fillRect(0, 0, W, H);
+
+    const margin = { left: 45, right: 15, top: 20, bottom: 30 };
+    const plotW = W - margin.left - margin.right;
+    const plotH = H - margin.top - margin.bottom;
+
+    ctx.strokeStyle = '#1a2a4a';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) {
+        const y = margin.top + plotH * i / 10;
+        ctx.beginPath(); ctx.moveTo(margin.left, y); ctx.lineTo(W - margin.right, y); ctx.stroke();
+    }
+
+    ctx.strokeStyle = '#3a5a8a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(margin.left, margin.top); ctx.lineTo(margin.left, H - margin.bottom); ctx.lineTo(W - margin.right, H - margin.bottom); ctx.stroke();
+
+    ctx.fillStyle = '#5577aa'; ctx.font = '9px sans-serif';
+    for (let i = 0; i <= 10; i++) {
+        ctx.fillText((1 - i / 10).toFixed(1), 5, margin.top + plotH * i / 10 + 3);
+    }
+
+    const tMax = 5 / alpha * 1000;
+    ctx.fillText('0', margin.left, H - 5);
+    ctx.fillText(tMax.toFixed(2) + 'ms', W - margin.right - 40, H - 5);
+
+    ctx.strokeStyle = '#ff444488';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    const y1 = margin.top;
+    ctx.beginPath(); ctx.moveTo(margin.left, y1); ctx.lineTo(W - margin.right, y1); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ff6666'; ctx.font = '9px sans-serif';
+    ctx.fillText('1.0 (目标)', W - margin.right - 50, y1 - 3);
+
+    const currentZeroRatio = lerp(2.0, 1.0, t);
+    const zeroFreq = (R / L) * currentZeroRatio;
+    const poleFreq = R / L;
+    const Kp = alpha * L;
+
+    ctx.beginPath();
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2;
+    let first = true;
+    for (let i = 0; i <= 300; i++) {
+        const time = i / 300 * tMax / 1000;
+        const s_val = 1;
+        const num_r = zeroFreq;
+        const num_i = 0;
+        const clNumReal = Kp / L * (s_val + num_r);
+        const clNumImag = Kp / L * 0;
+        const clDenReal = (s_val + poleFreq) * s_val + Kp / L * (s_val + num_r);
+        const clDenImag = 0;
+        const stepResp = 1 - Math.exp(-alpha * time) * (1 + (zeroFreq - poleFreq) / (alpha + poleFreq) * (1 - Math.exp(-(alpha + poleFreq) * time)));
+        const y = margin.top + plotH * (1 - stepResp);
+        const x = margin.left + (time * 1000 / tMax) * plotW;
+        if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    const tr = 1.8 / alpha * 1000;
+    const xTr = margin.left + (tr / tMax) * plotW;
+    const y10 = margin.top + plotH * 0.9;
+    const y90 = margin.top + plotH * 0.1;
+    ctx.strokeStyle = '#00ff8888';
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(xTr, y10); ctx.lineTo(xTr, y90); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#00ff88'; ctx.font = '10px sans-serif';
+    ctx.fillText('tr≈' + tr.toFixed(2) + 'ms', xTr + 3, (y10 + y90) / 2);
+
+    ctx.fillStyle = '#5577aa'; ctx.font = '10px sans-serif';
+    ctx.fillText('i(t) / i*', 2, margin.top - 5);
+    ctx.fillText('时间', W / 2 - 10, H - 3);
+}
+
+drawAll();
+</script>
+</body>
+</html>

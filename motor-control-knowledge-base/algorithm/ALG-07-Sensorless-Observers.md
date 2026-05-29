@@ -1281,3 +1281,8 @@ $$
 | 磁链积分 | $\psi = \int(u - Rs \cdot i)dt$ | 磁链计算 |
 | EKF预测 | $\hat{x}_{k|k-1} = \hat{x}_{k-1} + T_s \cdot f(\hat{x}_{k-1}, u)$ | 状态预测 |
 | 全速域切换 | $\theta = (1-K)\theta_{HFI} + K\theta_{SMO}$ | 线性加权 |
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_VELOCITY_LOOP_SENSORLESS (41)，关键操作：切换观测器类型，观察低速和高速下的角度误差、反转时的跟踪性能

@@ -1,0 +1,11 @@
+# 在 user_config.yaml 的 signal_library 末尾添加：
+  - OFSR.esoaf.xTL  # ESO 估算负载转矩
+
+# 在 user_config.yaml 的 cplot.subplot 末尾添加：
+    - title: ESO Load Torque Estimation
+      y_title: Torque [Nm]
+      y:
+        - y_data: ACM.TLoad
+          y_label: True $T_L$
+        - y_data: OFSR.esoaf.xTL
+          y_label: ESO $\hat{T}_L$

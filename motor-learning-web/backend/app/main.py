@@ -59,4 +59,8 @@ async def serve_static(filename: str):
     file_path = os.path.join(static_dir, filename)
     if os.path.isfile(file_path):
         return FileResponse(file_path)
+    if filename.endswith('.md'):
+        index_path = os.path.join(BASE_DIR, "static", "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
     raise HTTPException(status_code=404, detail="Not found")

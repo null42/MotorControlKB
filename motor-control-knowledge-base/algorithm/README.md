@@ -8,8 +8,12 @@
 
 ```mermaid
 flowchart TD
+    subgraph 层次0_入门引导
+        A0[ALG-00 电流环物理直觉] --> A1
+    end
+
     subgraph 层次1_理论基础
-        A1[ALG-01 FOC理论 含Clarke-Park] --> A2[ALG-02 电流采样时序]
+        A1[ALG-01 FOC理论 含Clarke-Park] --> A2
         A2 --> A3[ALG-03 PI电流调节器]
         A3 --> A4[ALG-04 死区补偿]
     end
@@ -23,7 +27,7 @@ flowchart TD
         C2 --> C3[ALG-09 高频注入]
     end
 
-    subgraph 层次4_高级优化
+    subgraph 层级4_高级优化
         D1[ALG-10 过调制] --> D2[ALG-11 MTPA弱磁]
         D2 --> D3[ALG-12 速度环转矩观测器]
     end
@@ -33,10 +37,11 @@ flowchart TD
         E2 --> E3[ALG-15 前沿研究]
     end
 
+    层次0_入门引导 --> 层次1_理论基础
     层次1_理论基础 --> 层次2_工程实现
     层次2_工程实现 --> 层次3_无感控制
-    层次3_无感控制 --> 层次4_高级优化
-    层次4_高级优化 --> 层次5_工程完善
+    层次3_无感控制 --> 层级4_高级优化
+    层级4_高级优化 --> 层次5_工程完善
 ```
 
 ---
@@ -45,6 +50,7 @@ flowchart TD
 
 | 编号 | 模块 | 核心问题 | 难度 |
 |------|------|---------|------|
+| 0 | [电流环PI整定的物理直觉](./ALG-00-Current-Loop-Intuition.md) | 为什么要这样设Kp和Ki？带宽是什么？ | ★☆☆☆☆ |
 | 1 | [FOC理论基础](./ALG-01-FOC-Theory.md) | FOC为什么能实现高性能控制？ | ★★☆☆☆ |
 | 2 | [ADC电流采样时序](./ALG-02-Current-Sampling-Timing.md) | 如何正确采样相电流？ | ★★★☆☆ |
 | 3 | [PI电流调节器设计](./ALG-03-PI-Current-Regulator.md) | 电流环PI参数怎么设计？ | ★★★☆☆ |
@@ -57,7 +63,7 @@ flowchart TD
 | 10 | [过调制与六阶梯波](./ALG-10-Overmodulation.md) | 如何提升电压利用率？ | ★★★☆☆ |
 | 11 | [MTPA与弱磁控制](./ALG-11-MTPA-Flux-Weakening.md) | 如何最大化转矩输出？ | ★★★★☆ |
 | 12 | [速度环与转矩观测器](./ALG-12-Speed-Loop-Torque-Observer.md) | 外环如何设计？ | ★★★★☆ |
-| 13 | [保护与优化](./ALG-13-Protection-Optimization.md) | 如何保证安全并提升性能？ | ★★★★☆ |
+| 13 | [保护与优化](./ALG-13-Protection-Optimization.md) | 如何保证安全并提升性能？ | ★★★☆☆ |
 | 14 | [THD谐波分析](./ALG-14-THD-Harmonic-Analysis.md) | 如何量化电流质量？ | ★★★☆☆ |
 | 15 | [前沿研究](./ALG-15-Advanced-Research.md) | 低载波比下如何保证稳定？ | ★★★★★ |
 
@@ -82,11 +88,12 @@ flowchart TD
 ## 学习建议
 
 ### 零算法基础入门路线
-1. 先学ALG-01（FOC理论），理解坐标变换和控制原理
-2. 再学ALG-02（电流采样）和ALG-03（PI设计），掌握FOC基础组件
-3. 然后学ALG-05（有感FOC），掌握基本工程实现
-4. 进阶ALG-07（无感观测器），突破传感器依赖
-5. 按需学习ALG-08到ALG-15
+1. **先学ALG-00（电流环物理直觉），建立"为什么这样设计PI参数"的直观理解** ← 🆕 新增第一步
+2. 再学ALG-01（FOC理论），理解坐标变换和控制原理
+3. 然后学ALG-03（PI设计），掌握完整的数学推导和工程方法
+4. 接着学ALG-02（电流采样）和ALG-05（有感FOC），掌握FOC基础组件与实现
+5. 进阶ALG-07（无感观测器），突破传感器依赖
+6. 按需学习ALG-08到ALG-15
 
 ### 有算法基础进阶路线
 1. 直接从ALG-07（无感观测器）开始，深入理解观测器设计

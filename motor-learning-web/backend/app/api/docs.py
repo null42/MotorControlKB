@@ -21,6 +21,7 @@ HW_ORDER = [
 ]
 
 ALG_ORDER = [
+    "ALG-00-Current-Loop-Intuition",
     "ALG-01-FOC-Theory",
     "ALG-02-Current-Sampling-Timing",
     "ALG-03-PI-Current-Regulator",
@@ -59,6 +60,7 @@ HW_TITLES = {
 }
 
 ALG_TITLES = {
+    "ALG-00-Current-Loop-Intuition": "ALG-00 电流环PI整定的物理直觉（入门引导）",
     "ALG-01-FOC-Theory": "ALG-01 FOC理论基础（含Clark-Park变换）",
     "ALG-02-Current-Sampling-Timing": "ALG-02 ADC 电流采样时序",
     "ALG-03-PI-Current-Regulator": "ALG-03 PI 电流调节器设计",
@@ -332,13 +334,76 @@ def _build_module_entry(base_prefix: str, module_id: str, title: str, has_assess
     assessment_path = DOCS_DIR / assessment_rel
     if has_assessment and not assessment_path.exists():
         has_assessment = False
+
+    html_tools = []
+    module_dir = DOCS_DIR / base_prefix
+    if module_dir.exists():
+        short_match = re.match(r'(ALG-\d+|HW-\d+|ADV-HW-\d+|ADV-ALG-\d+|SYS-\d+|EE-\d+|CT-\d+|PP-\d+|COM-\d+|MEC-\d+)', module_id)
+        html_prefix = short_match.group(1) if short_match else module_id
+        for html_file in sorted(module_dir.glob(f"{html_prefix}*.html")):
+            html_rel = f"{base_prefix}/{html_file.name}"
+            html_name = html_file.stem
+            if "Calculator" in html_name:
+                html_title = "🔢 PI参数计算器"
+            elif "Animation" in html_name:
+                html_title = "🎬 零极点对消动画"
+            else:
+                html_title = html_name.replace(html_prefix, "").strip("-_")
+                if html_title:
+                    html_title = f"🔧 {html_title}"
+                else:
+                    html_title = "🔧 交互工具"
+            html_tools.append({
+                "id": html_rel.replace("/", "-").replace(".html", ""),
+                "title": html_title,
+                "path": html_rel,
+                "type": "html",
+            })
+
     entry = {
         "id": f"{base_prefix}/{module_id}",
         "title": title,
         "path": f"{base_prefix}/{module_id}.md",
         "assessment": assessment_rel if has_assessment else None,
+        "tools": html_tools if html_tools else None,
     }
     return entry
+
+
+def _discover_unlisted_modules(base_prefix: str, listed_ids: list) -> list:
+    discovered = []
+    module_dir = DOCS_DIR / base_prefix
+    if not module_dir.exists():
+        return discovered
+    listed_basenames = set(listed_ids)
+    for md_file in sorted(module_dir.glob("*.md")):
+        stem = md_file.stem
+        if stem in listed_basenames:
+            continue
+        if stem.endswith("-assessment"):
+            continue
+        if stem == "README":
+            continue
+        title = stem.replace("-", " ")
+        first_line = ""
+        try:
+            with open(md_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and not line.startswith("**模块编号"):
+                        break
+                    if line.startswith("# ") and not line.startswith("# 前言"):
+                        title = line.lstrip("# ").strip()
+                        break
+                    if line.startswith("**模块名称：**"):
+                        m = re.search(r'（(.+?)）', line)
+                        if m:
+                            title = m.group(1)
+                        break
+        except Exception:
+            pass
+        discovered.append(_build_module_entry(base_prefix, stem, title))
+    return discovered
 
 
 def parse_knowledge_base() -> Dict:
@@ -346,11 +411,13 @@ def parse_knowledge_base() -> Dict:
     for mod_id in HW_ORDER:
         title = HW_TITLES.get(mod_id, mod_id)
         hardware_modules.append(_build_module_entry("hardware", mod_id, title))
+    hardware_modules.extend(_discover_unlisted_modules("hardware", HW_ORDER))
 
     algorithm_modules = []
     for mod_id in ALG_ORDER:
         title = ALG_TITLES.get(mod_id, mod_id)
         algorithm_modules.append(_build_module_entry("algorithm", mod_id, title))
+    algorithm_modules.extend(_discover_unlisted_modules("algorithm", ALG_ORDER))
 
     mclib_modules = []
     for mod_id in MCLIB_ORDER:
@@ -376,41 +443,49 @@ def parse_knowledge_base() -> Dict:
     for mod_id in ADV_HW_ORDER:
         title = ADV_HW_TITLES.get(mod_id, mod_id)
         adv_hw_modules.append(_build_module_entry("advanced/hardware-algorithm-bridge", mod_id, title))
+    adv_hw_modules.extend(_discover_unlisted_modules("advanced/hardware-algorithm-bridge", ADV_HW_ORDER))
 
     adv_alg_modules = []
     for mod_id in ADV_ALG_ORDER:
         title = ADV_ALG_TITLES.get(mod_id, mod_id)
         adv_alg_modules.append(_build_module_entry("advanced/algorithm", mod_id, title))
+    adv_alg_modules.extend(_discover_unlisted_modules("advanced/algorithm", ADV_ALG_ORDER))
 
     sys_modules = []
     for mod_id in SYS_ORDER:
         title = SYS_TITLES.get(mod_id, mod_id)
         sys_modules.append(_build_module_entry("advanced/system-methodology", mod_id, title))
+    sys_modules.extend(_discover_unlisted_modules("advanced/system-methodology", SYS_ORDER))
 
     ee_modules = []
     for mod_id in EE_ORDER:
         title = EE_TITLES.get(mod_id, mod_id)
         ee_modules.append(_build_module_entry("electronics-basics", mod_id, title))
+    ee_modules.extend(_discover_unlisted_modules("electronics-basics", EE_ORDER))
 
     ct_modules = []
     for mod_id in CT_ORDER:
         title = CT_TITLES.get(mod_id, mod_id)
         ct_modules.append(_build_module_entry("control-theory", mod_id, title))
+    ct_modules.extend(_discover_unlisted_modules("control-theory", CT_ORDER))
 
     pp_modules = []
     for mod_id in PP_ORDER:
         title = PP_TITLES.get(mod_id, mod_id)
         pp_modules.append(_build_module_entry("power-path", mod_id, title))
+    pp_modules.extend(_discover_unlisted_modules("power-path", PP_ORDER))
 
     com_modules = []
     for mod_id in COM_ORDER:
         title = COM_TITLES.get(mod_id, mod_id)
         com_modules.append(_build_module_entry("communication", mod_id, title))
+    com_modules.extend(_discover_unlisted_modules("communication", COM_ORDER))
 
     mec_modules = []
     for mod_id in MEC_ORDER:
         title = MEC_TITLES.get(mod_id, mod_id)
         mec_modules.append(_build_module_entry("mechanical", mod_id, title))
+    mec_modules.extend(_discover_unlisted_modules("mechanical", MEC_ORDER))
 
     odrive_modules = []
     for mod_id in ODRIVE_ORDER:
@@ -445,6 +520,31 @@ def parse_knowledge_base() -> Dict:
         "path": "cross-reference/cross-reference-map.md",
         "assessment": None,
     }
+
+    SIM_ORDER = [
+        "SIM-00-C-Simulation-Overview",
+        "SIM-01-C-Simulation-QuickStart",
+        "SIM-02-C-Simulation-Code-Map",
+        "SIM-03-C-Simulation-Plotting",
+    ]
+
+    SIM_TITLES = {
+        "SIM-00-C-Simulation-Overview": "🧪 仿真入口总索引",
+        "SIM-01-C-Simulation-QuickStart": "🚀 快速上手指南",
+        "SIM-02-C-Simulation-Code-Map": "💻 代码概念映射",
+        "SIM-03-C-Simulation-Plotting": "📊 仿真绘图系统",
+    }
+
+    sim_modules = []
+    for mod_id in SIM_ORDER:
+        title = SIM_TITLES.get(mod_id, mod_id)
+        sim_modules.append({
+            "id": f"simulation/{mod_id}",
+            "title": title,
+            "path": f"simulation/{mod_id}.md",
+            "assessment": None,
+        })
+    sim_modules.extend(_discover_unlisted_modules("simulation", SIM_ORDER))
 
     return {
         "simulations": get_simulations(),
@@ -538,6 +638,12 @@ def parse_knowledge_base() -> Dict:
             "description": "两大开源电机控制固件的全面对比：架构差异、FOC实现、无感控制、保护机制、编码器支持、通信能力",
             "modules": [comparison_entry],
         },
+        "simulation": {
+            "id": "simulation",
+            "title": "🧪 C语言仿真验证",
+            "description": "基于emachinery的电机控制算法数值仿真实验平台——验证理论、观察现象、理解代码",
+            "modules": sim_modules,
+        },
         "crossReference": cross_ref,
         "referenceAppendix": {
             "id": "referenceAppendix",
@@ -578,6 +684,7 @@ def parse_knowledge_base() -> Dict:
             "odrive",
             "vesc",
             "comparison",
+            "simulation",
         ],
     }
 
@@ -597,6 +704,8 @@ async def get_doc(file_path: str):
     relative = os.path.relpath(str(resolved), str(base_resolved))
     if relative.startswith("..") or os.path.isabs(relative):
         raise HTTPException(status_code=403, detail="Access denied")
+    if full_path.suffix == ".html":
+        return FileResponse(full_path, media_type="text/html")
     return FileResponse(full_path, media_type="text/markdown")
 
 

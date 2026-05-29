@@ -1,0 +1,177 @@
+# 电机参数库
+# Motor Parameter Database for Motor Control Knowledge Base
+# 所有交互工具和示例统一引用此文件中的参数
+
+motors:
+  # ============================================================
+  # 标准教学电机 - 200W IPMSM（用户提供的真实参数）
+  # ============================================================
+  std_200w_ipmsm:
+    name: "200W IPMSM 内置式永磁同步电机"
+    type: "IPMSM"  # Interior PMSM, Ld != Lq
+
+    electrical:
+      # 电感：相电感/线电感 → Ld=0.08mH, Lq=0.16mH（凸极比2:1）
+      Ld_mH: 0.08
+      Lq_mH: 0.16
+      Ld_H: 8e-5    # H
+      Lq_H: 1.6e-4   # H
+
+      # 电阻：相电阻/线电阻 → 相电阻=0.06Ω
+      Rs_Ohm: 0.06
+
+      # 反电动势常数：3.4 V/krpm
+      # 换算：Ke_V_per_radps = 3.4 / (1000 * 2*PI/60) = 0.0324 V/(rad/s)
+      Ke_V_per_krpm: 3.4
+      Ke_V_per_radps: 0.0324
+
+      # 磁链估算：ψ_f = Ke / p = 0.0324 / 5 = 0.00648 Wb
+      psi_f_Wb: 0.00648
+
+      # 转矩系数：Kt = 1.5 * p * ψ_f = 1.5 * 5 * 0.00648 = 0.0486 Nm/A
+      # 铭牌给出 0.06 Nm/A，差异来自不同定义方式（峰值vsRMS）
+      Kt_Nm_per_A: 0.06
+
+      pole_pairs: 5
+      poles: 10
+
+      # 自然时间常数（d轴/q轴分别计算）
+      tau_d_ms: 1.333     # Ld/Rs = 0.08mH/0.06Ω = 1.33ms
+      tau_q_ms: 2.667     # Lq/Rs = 0.16mH/0.06Ω = 2.67ms
+
+    ratings:
+      Vdc_V: 24           # 母线电压
+      P_rated_W: 200       # 额定功率
+      T_rated_Nm: 0.64     # 额定转矩
+      n_rated_rpm: 3000    # 额定转速
+      n_max_rpm: 3200      # 最高转速
+      omega_e_rated_radps: 1570.8  # 3000 * 5 * 2π/60
+      I_rated_A: 11.5      # 额定电流（推测为RMS）
+      I_peak_A: 23         # 峰值电流
+      f_pwm_kHz: 20        # 典型PWM频率（假设）
+
+    mechanical:
+      J_kgm2: 3.2e-6       # 0.32 × 10^-4 kg·m²
+      B_Nms_rad: 0         # 摩擦系数（未知，默认0）
+
+    # 计算出的关键性能指标
+    derived:
+      # 基速点（反电动势等于母线电压时的转速）
+      n_base_rpm: ~3200    # 接近最高转速，说明这台电机几乎不需要弱磁
+      # 最大电角速度
+      omega_e_max_radps: 1675.5  # 3200 * 5 * 2π/60
+      # 弱磁起始转速（近似）
+      n_fw_start_rpm: ~3100
+      # 电气时间常数（取较大值作为保守估计）
+      tau_electrical_ms: 2.667
+      # 推荐带宽范围（基于PWM频率20kHz）
+      alpha_min_radps: 6283    # 2π*20000/20
+      alpha_max_radps: 12566   # 2π*20000/10
+      alpha_recommended_radps: 4000  # 推荐工作带宽
+
+  # ============================================================
+  # 备用：飞书原文使用的小电机（保留用于对比）
+  # ============================================================
+  ref_small_motor:
+    name: "小型高速PMSM（飞书原文参考）"
+    type: "SPMSM"
+
+    electrical:
+      Ld_mH: 0.10376
+      Lq_mH: 0.10376
+      Ld_H: 1.0376e-4
+      Lq_H: 1.0376e-4
+      Rs_Ohm: 0.1051
+      Ke_V_per_krpm: ~1.52
+      Ke_V_per_radps: 0.0145
+      psi_f_Wb: 0.0029
+      Kt_Nm_per_A: 0.0437
+      pole_pairs: 7
+      poles: 14
+      tau_d_ms: 0.987
+      tau_q_ms: 0.987
+
+    ratings:
+      Vdc_V: 24
+      P_rated_W: ~50
+      n_rated_rpm: ~5000
+      I_rated_A: ~5
+      f_pwm_kHz: 20
+
+    mechanical:
+      J_kgm2: 1e-6
+
+# ============================================================
+# 全局默认电机（当前使用的标准电机）
+# ============================================================
+default_motor: "std_200w_ipmsm"
+
+# ============================================================
+# PWM频率配置表
+# ============================================================
+pwm_configs:
+  low_speed_10k: { f_kHz: 10, alpha_safe_radps: 3142 }
+  standard_20k: { f_kHz: 20, alpha_safe_radps: 6283 }
+  high_perf_40k: { f_kHz: 40, alpha_safe_radps: 12566 }
+  ultra_100k: { f_kHz: 100, alpha_safe_radps: 31416 }
+
+default_pwm_config: "standard_20k"
+
+  # ============================================================
+  # 云台电机 - 4310 外转子无刷电机（用户提供的真实参数）
+  # 典型的直驱云台/航模用电机，与IPMSM形成绝佳教学对比
+  # ============================================================
+  gimbal_4310:
+    name: "4310 云台电机（外转子，磁环编码器）"
+    type: "BLDC_Gimbal"  # 外转子无刷，多极对，低速大扭矩
+
+    electrical:
+      Ld_mH: 4.74       # 相电感（很大！）
+      Lq_mH: 4.74        # 假设近似（外转子通常各向同性或差异小）
+      Ld_H: 4.74e-3      # H
+      Lq_H: 4.74e-3       # H
+      Rs_Ohm: 10.90       # 相电阻（极大！细线绕组）
+
+      Ke_V_per_krpm: ~33  # 转速常数：33 rpm/V
+      Ke_V_per_radps: 0.289  # = 60/(2π×33) ≈ 0.289 V/(rad/s)
+
+      psi_f_Wb: 0.0206   # 磁链 ≈ Ke/p = 0.289/14
+      Kt_Nm_per_A: 0.27   # 铭牌转矩常数
+
+      pole_pairs: 14      # 28极！（极多，电频率极高）
+      poles: 28
+
+      tau_d_ms: 0.435     # L/R = 4.74mH/10.9Ω = 0.435ms（比IPMSM还快！）
+      tau_q_ms: 0.435
+
+    ratings:
+      Vdc_V: 16           # 额定电压（低电压系统）
+      P_rated_W: 11       # 额定功率 ≈ 0.21Nm × 53.6rad/s
+      T_rated_Nm: 0.21    # 额定转矩
+      T_stall_Nm: 0.32    # 堵转转矩
+      n_rated_rpm: 512    # 额定转速（极低速！直驱云台特征）
+      n_max_rpm: 846      # 最大转速
+      omega_e_rated_radps: 750.7  # 512 × 14 × 2π/60
+      I_rated_A: 0.79     # 额定电流（很小！）
+      I_stall_A: 1.20     # 堵转电流
+      f_pwm_kHz: 20       # PWM频率（假设）
+
+    mechanical:
+      J_kgm2: 2.02e-5     # 202 g·cm²（外转子惯量大）
+      B_Nms_rad: 0         # 摩擦系数（未知）
+
+    info_extra:           # 额外信息
+      encoder: "AS5048A/AS5600"  # 14位磁环绝对值编码器
+      weight_g: 113       # 重量
+      size_mm: "49/20(26)" # 外径/内径(高)
+      temp_work_C: "-20~80"
+      temp_demag_C: 120
+
+    derived:
+      n_base_rpm: ~846    # 接近最高转速（几乎不需要弱磁）
+      tau_electrical_ms: 0.435
+      alpha_min_radps: 3142
+      alpha_max_radps: 12566
+      alpha_recommended_radps: 3000  # 推荐带宽（低速电机可适当降低）
+      speed_constant_kV: 33  # rpm/V
+      torque_constant_Kt: 0.27  # Nm/A

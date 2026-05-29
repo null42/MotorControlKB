@@ -1,0 +1,11 @@
+# 参数辨识推荐配置
+# 复制到 user_config.yaml 的 simulation 段
+
+simulation:
+  sim.CLTS: 1.0e-4
+  sim.NUMBER_OF_STEPS: 100000  # 辨识需要更多步数
+  FOC.CLBW_HZ: 100             # 辨识时电流环带宽不宜过大
+  FOC.delta: 20                # 不使用速度环时此参数无影响
+  FOC.VL_EXE_PER_CL_EXE: 1
+  CL.LIMIT_DC_BUS_UTILIZATION: 0.96
+  user.mode_select_synchronous_motor: 9  # Commissioning 模式

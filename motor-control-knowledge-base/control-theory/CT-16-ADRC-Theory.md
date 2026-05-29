@@ -667,3 +667,8 @@ ESO带宽ωo在运行过程中根据工况自适应调整：
 - 知识体系：控制理论基础
 - 模块名称：ADRC自抗扰控制理论
 - 算法关联：TD(fhan)→过渡过程安排、ESO(fal)→总扰动估计与补偿、NLSEF→非线性控制律
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_VELOCITY_LOOP_USING_ESO (47)，关键操作：改 CAREFUL_ESOAF_OMEGA_OBSERVER（观测器带宽），观察扰动估计 xTL 和转速跟踪性能

@@ -116,3 +116,8 @@ typedef struct {
 **结论**: HPM_MCLV2 推荐使用 Type II PLL（更好的跟踪精度和噪声抑制）
 
 参考: [HPM KB: 锁相环滤波器性能分析](https://kb.hpmicro.com/2024/10/31/)
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_FOC_SENSORLESS (31)，关键操作：对比 OBSV.theta_d（观测角度）和 ACM.theta_d（真实角度），观察观测器收敛过程

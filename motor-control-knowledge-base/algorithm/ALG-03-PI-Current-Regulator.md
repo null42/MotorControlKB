@@ -324,3 +324,8 @@ HPM6xxx 系列内置 CLC（Current Loop Controller）硬件加速单元，可在
 - HPM CLC（Current Loop Controller）硬件加速 PID 计算
 - 参考: `SDK-01-HPM-MC-Architecture.md` 第6节「硬件加速」
 - 参考: `SDK-02-HPM-MC-v2-Core-Loop.md` 第3节「控制链核心」
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_ID_SWEEPING (33) / MODE_SELECT_IQ_SWEEPING (34)，关键操作：启用扫频模式，测量电流环实际 -3dB 带宽与理论值 CLBW_HZ 的对比

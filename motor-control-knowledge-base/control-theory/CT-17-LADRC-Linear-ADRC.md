@@ -848,3 +848,10 @@ $$u = \frac{u_0 - z_3}{b_0} + u_{ff}$$
 - 知识体系：控制理论基础
 - 模块名称：LADRC 线性自抗扰控制
 - 算法关联：带宽参数化→LESO极点配置（ωo）、PD控制器参数化（ωc）、扰动补偿→$u=(u_0-z_{n+1})/b_0$、等效二自由度结构→频域分析
+
+
+---
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_VELOCITY_LOOP_USING_ESO (47)，关键操作：对比 LADRC（线性 ESO + 线性状态误差反馈）与 PI 速度环在阶跃负载下的抗扰动性能

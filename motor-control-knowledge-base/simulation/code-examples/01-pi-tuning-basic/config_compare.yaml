@@ -1,0 +1,17 @@
+# 参数对照表 - 复制需要的配置到 user_config.yaml 中
+
+# === 组 A：保守参数 ===
+# FOC.CLBW_HZ: 50
+# FOC.delta: 20
+
+# === 组 B：中等参数 ===
+# FOC.CLBW_HZ: 100
+# FOC.delta: 10
+
+# === 组 C：激进参数 ===
+# FOC.CLBW_HZ: 200
+# FOC.delta: 5
+
+# === 组 D：极限参数 ===
+# FOC.CLBW_HZ: 500
+# FOC.delta: 5

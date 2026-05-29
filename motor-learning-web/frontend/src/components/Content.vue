@@ -82,6 +82,19 @@ const loadContent = async (docId: string) => {
   loading.value = true
   readingProgress.value = 0
   errorMsg.value = ''
+
+  if (docId.endsWith('.html')) {
+    try {
+      content.value = `<iframe src="/api/docs/file/${docId}" style="width:100%;height:calc(100vh - 80px);border:none;" sandbox="allow-scripts allow-same-origin"></iframe>`
+      markVisited(docId)
+      scrollToTop()
+    } catch (err) {
+      errorMsg.value = `加载HTML工具失败: ${err}`
+    }
+    loading.value = false
+    return
+  }
+
   try {
     const response = await axios.get(`/api/docs/file/${docId}`, {
       responseType: 'text',
@@ -192,7 +205,12 @@ const processCrossReferenceLinks = () => {
     const href = link.getAttribute('href')
     if (!href) return
 
-    if (href.startsWith('../') || href.startsWith('./')) {
+    if (href.startsWith('http://') || href.startsWith('https://') ||
+        href.startsWith('mailto:') || href.startsWith('#') ||
+        href.startsWith('javascript:')) return
+
+    if (href.startsWith('../') || href.startsWith('./') ||
+        (!href.startsWith('/') && href.endsWith('.md'))) {
       link.addEventListener('click', (e) => {
         e.preventDefault()
         const resolvedPath = resolveRelativePath(props.currentDoc, href)

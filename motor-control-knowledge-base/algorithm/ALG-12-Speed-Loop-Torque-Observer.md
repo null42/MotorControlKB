@@ -205,3 +205,8 @@ $$P[k] = \frac{1}{\lambda}\left(P[k-1] - K[k]\varphi^T[k]P[k-1]\right)$$
 **参考**:
 - `SDK-05-HPM-MC-v2-Path-Plan.md` — 路径规划
 - `SDK-04-HPM-MC-v2-Hybrid-Ctrl.md` — 混合控制
+
+
+## 🧪 仿真验证
+> 本模块的理论可在 [C 语言仿真](../simulation/SIM-00-C-Simulation-Overview.md) 中验证。
+> 对应仿真模式：MODE_SELECT_VELOCITY_LOOP_USING_ESO (47)，关键操作：施加未知负载阶跃，观察 ESO 估计的转矩 OFSR.esoaf.xTL 是否跟踪真实负载 ACM.TLoad

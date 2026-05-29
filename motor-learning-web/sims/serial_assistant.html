@@ -562,6 +562,9 @@ const G = {
   timebase: 0.1,
   yMode: 'auto',
   yRange: 5,
+  autoYDirty: true,
+  _cachedYMin: 0,
+  _cachedYMax: 0,
   triggerEdge: 'none',
   triggerCh: 0,
   triggerLevel: 0,
@@ -660,6 +663,12 @@ function initChannels(count) {
     G.channelStats[id] = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
   }
   G.channelCount = count;
+  dataWriteIdx = 0;
+  G.sampleCount = 0;
+  G.autoYDirty = true;
+  G.xyTrail = [];
+  G.readBuffer = new Uint8Array(0);
+  G.hexStream = '';
   renderChannelList();
   updateChannelDropdowns();
 }
@@ -1114,9 +1123,37 @@ function setConnected(state, label) {
   $('conn_mode_badge').textContent = state ? G.serialMode.toUpperCase() : '--';
 }
 
+function resetDataState() {
+  dataWriteIdx = 0;
+  G.sampleCount = 0;
+  G.droppedFrames = 0;
+  G.frameCount = 0;
+  G.readBuffer = new Uint8Array(0);
+  G.hexStream = '';
+  G.xyTrail = [];
+  G.lastValues = [];
+  G.currentPitch = 0;
+  G.currentRoll = 0;
+  G.currentYaw = 0;
+  G.smoothPitch = 0;
+  G.smoothRoll = 0;
+  G.smoothYaw = 0;
+  G.autoYDirty = true;
+  G._cachedYMin = 0;
+  G._cachedYMax = 0;
+  G.recordedData = [];
+  G.recording = false;
+  G.channels.forEach(ch => {
+    G.channelData[ch.id] = new Float32Array(G.ringSize);
+    G.channelStats[ch.id] = { min: Infinity, max: -Infinity, sum: 0, count: 0 };
+  });
+}
+
 async function doConnect() {
   if ($('chk_demo').checked) {
     G.serialMode = 'demo';
+    demoT = 0;
+    resetDataState();
     setConnected(true, 'Demo 模式');
     return;
   }
